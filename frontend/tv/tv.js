@@ -20,6 +20,7 @@ const state = {
   ttsVolume: 1.0, // Volume multiplicador (0.1–4.0)
   slideTimer: null, // Timer for slide transitions
   mediaFilter: null, // null = "all", "videos" ou "slides" - carregado do backend
+  lastTenant: null, // Último tenant do /tv/state (para aplicar play/pause no onReady do player)
 };
 
 let ytApiPromise = null;
@@ -208,46 +209,126 @@ function renderCurrentCalls(calls) {
   }
 }
 
-function renderHistory(history) {
-  const root = document.getElementById("history");
-  root.innerHTML = "";
-  for (const item of history || []) {
-    // Only show finished tickets in history
-    if (item.status && !["completed", "no_show", "cancelled"].includes(item.status)) {
-      continue;
-    }
-    const isPrefer = item.priority === "preferential";
-    const ticketColor = isPrefer ? "text-accent" : "text-white";
-    const boxOpacity = isPrefer ? "" : "opacity-80";
-    const endedAt = item.completed_at ? new Date(item.completed_at) : null;
-    const endedTxt = endedAt ? endedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
-    const startedAt = item.service_started_at ? new Date(item.service_started_at) : null;
-    let durTxt = "";
-    if (startedAt && endedAt && endedAt >= startedAt) {
-      const secs = Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000);
-      const mins = Math.floor(secs / 60);
-      const rem = secs % 60;
-      durTxt = `${mins}m${rem.toString().padStart(2, "0")}s`;
-    }
-    const html = `
-      <div class="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/5 ${boxOpacity}">
-        <div class="flex flex-col">
-          <span class="text-3xl font-black ${ticketColor} tracking-tighter whitespace-nowrap">${escapeHtml(
-      item.ticket_code || ""
-    )}</span>
-          <span class="text-xs uppercase font-bold text-white/50 whitespace-nowrap">${escapeHtml(
-      (item.counter_name || "").toUpperCase()
-    )}</span>
-          ${(endedTxt || durTxt) ? `<span class="text-[10px] font-bold text-white/35 uppercase tracking-widest mt-1">${escapeHtml(endedTxt ? `Fim ${endedTxt}` : "")}${endedTxt && durTxt ? " • " : ""}${escapeHtml(durTxt ? `Duração ${durTxt}` : "")}</span>` : ""}
+// ─── Painel direito: Fila de Espera ↔ Histórico ─────────────────────────────
+let panelMode = "queue"; // "queue" | "history"
+let panelToggleTimer = null;
+let lastWaitingQueue = [];
+let lastHistory = [];
+
+function renderPanelHeader(mode) {
+  const bar = document.getElementById("panelHeaderBar");
+  if (!bar) return;
+  if (mode === "queue") {
+    bar.innerHTML = `
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-primary text-3xl">group</span>
+          <h4 class="text-xl font-bold tracking-tight">Fila de Espera</h4>
         </div>
-        <div class="text-right">
-          <span class="text-xs font-bold text-white/30 whitespace-nowrap">${escapeHtml(item.service_name || "")}</span>
+        <span class="text-xs font-black uppercase text-primary tracking-[0.15em] bg-primary/10 px-3 py-1.5 rounded-lg border border-primary/20 whitespace-nowrap">AGUARDANDO</span>
+      </div>`;
+  } else {
+    bar.innerHTML = `
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="material-symbols-outlined text-accent text-3xl">history</span>
+          <h4 class="text-xl font-bold tracking-tight">Últimas Senhas</h4>
         </div>
-      </div>
-    `;
-    root.insertAdjacentHTML("beforeend", html);
+        <span class="text-xs font-black uppercase text-accent tracking-[0.15em] bg-accent/10 px-3 py-1.5 rounded-lg border border-accent/20 whitespace-nowrap">HISTÓRICO</span>
+      </div>`;
   }
 }
+
+function renderQueueItem(item, pos) {
+  const isPrefer = item.priority === "preferential";
+  const ticketColor = isPrefer ? "text-accent" : "text-white";
+  const issuedAt = item.issued_at ? new Date(item.issued_at) : null;
+  const timeTxt = issuedAt ? issuedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
+  return `
+    <div class="flex items-center justify-between px-3 py-2 bg-white/5 rounded-xl border border-white/5">
+      <div class="flex items-center gap-2">
+        <span style="color:rgba(255,255,255,0.18);font-size:10px;font-weight:900;width:14px;text-align:center">${pos}</span>
+        <div class="flex flex-col">
+          <span class="text-xl font-black ${ticketColor} tracking-tighter">${escapeHtml(item.ticket_code || "")}</span>
+          <span class="text-[9px] font-bold uppercase" style="color:rgba(255,255,255,0.35)">${escapeHtml(item.service_name || "")}</span>
+        </div>
+      </div>
+      <span class="text-[9px] font-bold" style="color:rgba(255,255,255,0.22)">${escapeHtml(timeTxt)}</span>
+    </div>`;
+}
+
+function renderHistoryItem(item) {
+  const isPrefer = item.priority === "preferential";
+  const ticketColor = isPrefer ? "text-accent" : "text-white";
+  const opacity = isPrefer ? "" : "opacity:0.8";
+  const endedAt = item.completed_at ? new Date(item.completed_at) : null;
+  const endedTxt = endedAt ? endedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
+  const startedAt = item.service_started_at ? new Date(item.service_started_at) : null;
+  let durTxt = "";
+  if (startedAt && endedAt && endedAt >= startedAt) {
+    const secs = Math.floor((endedAt.getTime() - startedAt.getTime()) / 1000);
+    const mins = Math.floor(secs / 60);
+    const rem = secs % 60;
+    durTxt = `${mins}m${rem.toString().padStart(2, "0")}s`;
+  }
+  return `
+    <div class="flex items-center justify-between px-3 py-2 bg-white/5 rounded-xl border border-white/5" style="${opacity}">
+      <div class="flex flex-col">
+        <span class="text-xl font-black ${ticketColor} tracking-tighter">${escapeHtml(item.ticket_code || "")}</span>
+        <span class="text-[9px] font-bold uppercase" style="color:rgba(255,255,255,0.4)">${escapeHtml((item.counter_name || "").toUpperCase())}</span>
+        ${(endedTxt || durTxt) ? `<span class="text-[9px] font-bold uppercase" style="color:rgba(255,255,255,0.25)">${escapeHtml(endedTxt ? `Fim ${endedTxt}` : "")}${endedTxt && durTxt ? " • " : ""}${escapeHtml(durTxt ? `Dur. ${durTxt}` : "")}</span>` : ""}
+      </div>
+      <span class="text-[9px] font-bold text-right" style="color:rgba(255,255,255,0.2);max-width:60px;word-break:break-word">${escapeHtml(item.service_name || "")}</span>
+    </div>`;
+}
+
+function renderPanel() {
+  renderPanelHeader(panelMode);
+
+  const normalEl = document.getElementById("panel-normal");
+  const preferEl = document.getElementById("panel-preferential");
+  if (!normalEl || !preferEl) return;
+
+  const items = panelMode === "queue" ? lastWaitingQueue : lastHistory;
+  const renderFn = panelMode === "queue" ? renderQueueItem : renderHistoryItem;
+
+  const normal = items.filter((i) => i.priority !== "preferential");
+  const prefer = items.filter((i) => i.priority === "preferential");
+
+  const emptyNormal = `<div style="color:rgba(255,255,255,0.18);font-size:11px;text-align:center;padding:14px 0">Nenhuma senha</div>`;
+  const emptyPrefer = `<div style="color:rgba(255,215,0,0.25);font-size:11px;text-align:center;padding:14px 0">Nenhuma senha</div>`;
+
+  normalEl.innerHTML = normal.length ? normal.map((item, i) => renderFn(item, i + 1)).join("") : emptyNormal;
+  preferEl.innerHTML = prefer.length ? prefer.map((item, i) => renderFn(item, i + 1)).join("") : emptyPrefer;
+
+  // Animação de fade ao trocar conteúdo
+  [normalEl, preferEl].forEach((el) => {
+    el.classList.remove("panel-fade-in");
+    void el.offsetWidth; // força reflow
+    el.classList.add("panel-fade-in");
+  });
+}
+
+function renderHistory(history) {
+  lastHistory = (history || []).filter(
+    (item) => !item.status || ["completed", "no_show", "cancelled"].includes(item.status)
+  );
+  renderPanel();
+}
+
+function renderWaitingQueue(queue) {
+  lastWaitingQueue = queue || [];
+  renderPanel();
+}
+
+function startPanelToggle() {
+  if (panelToggleTimer) clearInterval(panelToggleTimer);
+  panelToggleTimer = setInterval(() => {
+    panelMode = panelMode === "queue" ? "history" : "queue";
+    renderPanel();
+  }, 9000); // alterna a cada 9 segundos
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 let tickerTimer = null;
 let tickerIndex = 0;
@@ -311,6 +392,7 @@ async function fetchState() {
 
 function applyTenantBranding(tenant) {
   if (!tenant) return;
+  state.lastTenant = tenant;
   const name = (tenant.nome_fantasia || tenant.nome_razao_social || "Chamador").toString();
   const nameEl = document.getElementById("tenantName");
   if (nameEl) nameEl.textContent = name;
@@ -382,11 +464,10 @@ function applyVideoControls(tenant) {
       console.log("Remote control: unmuting video");
     }
 
-    // Video play/pause
+    // Video play/pause — YT: 1=playing, 2=paused, 3=buffering, 5=cued
     const shouldPause = tenant.tv_video_paused === true || tenant.tv_video_paused === 1;
     const playerState = p.getPlayerState();
-    // 1 = playing, 2 = paused
-    if (shouldPause && playerState === 1) {
+    if (shouldPause && (playerState === 1 || playerState === 3)) {
       p.pauseVideo();
       console.log("Remote control: pausing video");
     } else if (!shouldPause && playerState === 2) {
@@ -737,6 +818,11 @@ function initPlaylist(playlist) {
           // Set volume for when user enables audio
           e.target.setVolume(60);
 
+          // Apply remote play/pause from tenant (so "Pausar" in admin takes effect immediately)
+          if (state.lastTenant) {
+            applyVideoControls(state.lastTenant);
+          }
+
           // Show button immediately - user MUST interact to enable audio
           console.log("Video is playing muted. User must click button to enable audio.");
           showEnableAudioButton();
@@ -969,6 +1055,7 @@ async function main() {
       setCurrent(data.current_call);
     }
     renderHistory(data.history);
+    renderWaitingQueue(data.waiting_queue || []);
     renderTicker(data.announcements);
     initialPlaylist = data.playlist || [];
     state.playlist = initialPlaylist;
@@ -1021,6 +1108,7 @@ async function main() {
       const data = await fetchState();
       applyTenantBranding(data.tenant);
       renderHistory(data.history);
+      renderWaitingQueue(data.waiting_queue || []);
       renderTicker(data.announcements);
       // Use current_calls if available (all calls in service)
       if (data.current_calls && data.current_calls.length > 0) {
@@ -1082,6 +1170,8 @@ async function main() {
   }, 3000);
 
   connectSSEWithToken();
+  startPanelToggle();
+  renderPanel(); // garante header renderizado imediatamente
 }
 
 // One-tap audio enable (needed for some browsers)

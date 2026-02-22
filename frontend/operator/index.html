@@ -131,6 +131,7 @@
       <div class="container py-3">
         <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
           <div class="op-brand">
+            <img id="tenantLogoMini" alt="Logo do tenant" style="height:40px; width:auto; display:none" />
             <div class="fw-bold text-white" style="font-size:1.1rem;">Operador</div>
             <div id="pillUser" class="op-pill d-none"></div>
             <div id="pillCounter" class="op-pill d-none"></div>
@@ -364,6 +365,19 @@
         pillCounter.classList.remove("d-none");
       }
 
+      function applyTenantLogo(tenant) {
+        const el = document.getElementById("tenantLogoMini");
+        if (!el) return;
+        if (tenant && tenant.logo_base64 && typeof tenant.logo_base64 === "string") {
+          const v = tenant.logo_base64.trim();
+          el.src = v.startsWith("data:") ? v : `data:image/svg+xml;base64,${v}`;
+          el.style.display = "block";
+        } else {
+          el.removeAttribute("src");
+          el.style.display = "none";
+        }
+      }
+
       function setLoggedInUI(isLoggedIn) {
         document.getElementById("btnLogout").classList.toggle("d-none", !isLoggedIn);
       }
@@ -407,8 +421,9 @@
         if (refreshInFlight) return;
         refreshInFlight = true;
         try {
-          const [me, pref, norm, cur] = await Promise.all([
+          const [me, tenant, pref, norm, cur] = await Promise.all([
             api("/auth/me", { headers: authHeaders() }),
+            api("/tenant/me", { headers: authHeaders() }),
             api("/tickets/queue?priority=preferential", { headers: authHeaders() }),
             api("/tickets/queue?priority=normal", { headers: authHeaders() }),
             api("/operator/my-ticket", { headers: authHeaders() }),
@@ -424,6 +439,7 @@
             } catch {}
           }
           showIdentity(me, counterName);
+          if (tenant) applyTenantLogo(tenant);
 
           renderTicketList("listPref", "countPref", pref);
           renderTicketList("listNorm", "countNorm", norm);

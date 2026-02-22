@@ -417,13 +417,14 @@ def fetch_state() -> Dict[str, Any]:
         )
         tenant = cur.fetchone()
 
-        # Buscar todas as chamadas em atendimento (status 'called')
+        # Buscar todas as chamadas em atendimento (status 'called') do tenant
         cur.execute(
             """
             SELECT * FROM calls
-            WHERE status IN ('called')
+            WHERE tenant_cpf_cnpj = %s AND status IN ('called')
             ORDER BY called_at DESC
-            """
+            """,
+            (tenant_cpf_cnpj or "",),
         )
         legacy_current_calls = cur.fetchall()
 
@@ -434,10 +435,11 @@ def fetch_state() -> Dict[str, Any]:
         cur.execute(
             """
             SELECT * FROM calls
-            WHERE status IN ('called')
+            WHERE tenant_cpf_cnpj = %s AND status IN ('called')
             ORDER BY called_at DESC
             LIMIT 10
-            """
+            """,
+            (tenant_cpf_cnpj or "",),
         )
         legacy_history = cur.fetchall()
 
@@ -466,6 +468,29 @@ def fetch_state() -> Dict[str, Any]:
             (tenant_cpf_cnpj or "",),
         )
         tickets_history = cur.fetchall()
+
+        # Fila de espera: tickets aguardando (para a TV mostrar quem está esperando)
+        cur.execute(
+            """
+            SELECT id, ticket_code, service_name, priority, issued_at
+            FROM tickets
+            WHERE tenant_cpf_cnpj = %s AND status = 'waiting'
+            ORDER BY issued_at ASC
+            LIMIT 20
+            """,
+            (tenant_cpf_cnpj or "",),
+        )
+        waiting_rows = cur.fetchall()
+        waiting_queue = [
+            {
+                "id": r.get("id"),
+                "ticket_code": r.get("ticket_code"),
+                "service_name": r.get("service_name"),
+                "priority": r.get("priority"),
+                "issued_at": r.get("issued_at").isoformat() if r.get("issued_at") else None,
+            }
+            for r in waiting_rows
+        ]
 
         # Tenant ticker messages
         cur.execute(
@@ -587,6 +612,7 @@ def fetch_state() -> Dict[str, Any]:
         "current_call": normalize_call(current_call),
         "current_calls": merged_current_calls,
         "history": merged_history,
+        "waiting_queue": waiting_queue,
         "announcements": announcements,
         "playlist": playlist,
         "server_time": utc_now().isoformat(),
@@ -662,28 +688,51 @@ def tenant_dashboard(authorization: Optional[str] = Header(default=None)):
         )
         operators_total = int((cur.fetchone() or {}).get("n") or 0)
 
-        # Calls (global for now)
+        # Atendimentos hoje: tickets completed + calls (tenant-scoped)
         cur.execute(
             """
-            SELECT COUNT(*) AS n
-            FROM calls
-            WHERE called_at IS NOT NULL AND DATE(called_at) = CURDATE()
-            """
+            SELECT COUNT(*) AS n FROM tickets
+            WHERE tenant_cpf_cnpj = %s AND status = 'completed' AND DATE(completed_at) = CURDATE()
+            """,
+            (tenant_cpf_cnpj,),
         )
-        tickets_attended_today = int((cur.fetchone() or {}).get("n") or 0)
-
+        tickets_today = int((cur.fetchone() or {}).get("n") or 0)
         cur.execute(
             """
-            SELECT COUNT(*) AS n
-            FROM calls
-            WHERE status = 'called' AND called_at IS NOT NULL
-              AND TIMESTAMPDIFF(MINUTE, called_at, NOW()) <= 60
+            SELECT COUNT(*) AS n FROM calls
+            WHERE tenant_cpf_cnpj = %s AND called_at IS NOT NULL AND DATE(called_at) = CURDATE()
+            """,
+            (tenant_cpf_cnpj,),
+        )
+        calls_today = int((cur.fetchone() or {}).get("n") or 0)
+        tickets_attended_today = max(tickets_today, calls_today)
+
+        # Em atendimento (últimos 60 min): tickets called/in_service
+        cur.execute(
             """
+            SELECT COUNT(*) AS n FROM tickets
+            WHERE tenant_cpf_cnpj = %s AND status IN ('called', 'in_service')
+              AND (service_started_at IS NOT NULL OR called_at IS NOT NULL)
+              AND TIMESTAMPDIFF(MINUTE, COALESCE(service_started_at, called_at), NOW()) <= 60
+            """,
+            (tenant_cpf_cnpj,),
         )
         in_service_last_60m = int((cur.fetchone() or {}).get("n") or 0)
 
-        cur.execute("SELECT MAX(called_at) AS last_called_at FROM calls WHERE called_at IS NOT NULL")
-        last_called_at = (cur.fetchone() or {}).get("last_called_at")
+        cur.execute(
+            """
+            SELECT MAX(completed_at) AS last_at FROM tickets
+            WHERE tenant_cpf_cnpj = %s AND completed_at IS NOT NULL
+            """,
+            (tenant_cpf_cnpj,),
+        )
+        last_called_at = (cur.fetchone() or {}).get("last_at")
+        if not last_called_at:
+            cur.execute(
+                "SELECT MAX(called_at) AS last_at FROM calls WHERE tenant_cpf_cnpj = %s AND called_at IS NOT NULL",
+                (tenant_cpf_cnpj,),
+            )
+            last_called_at = (cur.fetchone() or {}).get("last_at")
 
     return {
         "tenant": tenant,
@@ -695,6 +744,139 @@ def tenant_dashboard(authorization: Optional[str] = Header(default=None)):
         "last_called_at": last_called_at.isoformat() if last_called_at else None,
         "server_time": utc_now().isoformat(),
     }
+
+
+@app.get("/tenant/dashboard/analytics")
+def dashboard_analytics(
+    period: str = Query(default="7d", description="7d ou 30d"),
+    authorization: Optional[str] = Header(default=None),
+):
+    """Atendimentos por dia no período (para gráfico). Baseado em tickets completed."""
+    payload = require_jwt(authorization)
+    require_role(payload, {"admin"})
+    tenant_cpf_cnpj = tenant_from_jwt(payload)
+    days = 7 if period == "7d" else 30
+
+    with db_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            """
+            SELECT DATE(completed_at) AS dt, COUNT(*) AS n
+            FROM tickets
+            WHERE tenant_cpf_cnpj = %s AND status = 'completed' AND completed_at >= DATE_SUB(CURDATE(), INTERVAL %s DAY)
+            GROUP BY DATE(completed_at)
+            ORDER BY dt ASC
+            """,
+            (tenant_cpf_cnpj, days),
+        )
+        rows = cur.fetchall()
+    from datetime import date, timedelta
+    result = {}
+    for r in rows:
+        dt = r.get("dt")
+        key = dt.isoformat() if hasattr(dt, "isoformat") else str(dt)
+        result[key] = int(r.get("n") or 0)
+    labels = []
+    values = []
+    today = date.today()
+    for i in range(days, -1, -1):
+        d = today - timedelta(days=i)
+        key = d.isoformat()
+        labels.append(d.strftime("%d/%m"))
+        values.append(result.get(key, 0))
+    return {"labels": labels, "values": values, "period": period}
+
+
+@app.get("/tenant/dashboard/top-operators")
+def dashboard_top_operators(
+    period: str = Query(default="7d", description="today, 7d, 30d"),
+    limit: int = Query(default=10, ge=1, le=50),
+    authorization: Optional[str] = Header(default=None),
+):
+    """Ranking de atendentes por quantidade de atendimentos concluídos."""
+    payload = require_jwt(authorization)
+    require_role(payload, {"admin"})
+    tenant_cpf_cnpj = tenant_from_jwt(payload)
+
+    if period == "today":
+        date_filter = "AND DATE(t.completed_at) = CURDATE()"
+    elif period == "30d":
+        date_filter = "AND t.completed_at >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)"
+    else:
+        date_filter = "AND t.completed_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)"
+
+    with db_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            f"""
+            SELECT t.operator_id, t.operator_name, COUNT(*) AS completed_count
+            FROM tickets t
+            WHERE t.tenant_cpf_cnpj = %s AND t.status = 'completed' AND t.operator_id IS NOT NULL
+            {date_filter}
+            GROUP BY t.operator_id, t.operator_name
+            ORDER BY completed_count DESC
+            LIMIT %s
+            """,
+            (tenant_cpf_cnpj, limit),
+        )
+        rows = cur.fetchall()
+    return [{"operator_id": r["operator_id"], "operator_name": r["operator_name"] or "—", "completed_count": int(r["completed_count"] or 0)} for r in rows]
+
+
+@app.get("/tenant/dashboard/history")
+def dashboard_history(
+    from_date: Optional[str] = Query(default=None, description="YYYY-MM-DD"),
+    to_date: Optional[str] = Query(default=None, description="YYYY-MM-DD"),
+    operator_id: Optional[str] = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    authorization: Optional[str] = Header(default=None),
+):
+    """Histórico de atendimentos com filtros (para modal)."""
+    payload = require_jwt(authorization)
+    require_role(payload, {"admin"})
+    tenant_cpf_cnpj = tenant_from_jwt(payload)
+
+    conditions = ["t.tenant_cpf_cnpj = %s", "t.status = 'completed'"]
+    args = [tenant_cpf_cnpj]
+    if from_date:
+        conditions.append("DATE(t.completed_at) >= %s")
+        args.append(from_date)
+    if to_date:
+        conditions.append("DATE(t.completed_at) <= %s")
+        args.append(to_date)
+    if operator_id:
+        conditions.append("t.operator_id = %s")
+        args.append(operator_id)
+    args.append(limit)
+    where = " AND ".join(conditions)
+
+    with db_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            f"""
+            SELECT t.id, t.ticket_code, t.service_name, t.priority, t.operator_name, t.counter_name,
+                   t.called_at, t.service_started_at, t.completed_at
+            FROM tickets t
+            WHERE {where}
+            ORDER BY t.completed_at DESC
+            LIMIT %s
+            """,
+            args,
+        )
+        rows = cur.fetchall()
+    def row_to_dict(r):
+        return {
+            "id": r.get("id"),
+            "ticket_code": r.get("ticket_code"),
+            "service_name": r.get("service_name"),
+            "priority": r.get("priority"),
+            "operator_name": r.get("operator_name"),
+            "counter_name": r.get("counter_name"),
+            "called_at": r["called_at"].isoformat() if r.get("called_at") else None,
+            "service_started_at": r["service_started_at"].isoformat() if r.get("service_started_at") else None,
+            "completed_at": r["completed_at"].isoformat() if r.get("completed_at") else None,
+        }
+    return [row_to_dict(r) for r in rows]
 
 
 # ============================================================
@@ -1476,6 +1658,61 @@ def delete_user(payload_in: Dict[str, Any], authorization: Optional[str] = Heade
     return {"ok": True}
 
 
+@app.put("/tenant/users/{user_id}")
+def update_user(
+    user_id: str,
+    payload_in: Dict[str, Any],
+    authorization: Optional[str] = Header(default=None),
+):
+    """Atualiza email, nome, tipo (role) e ativo. Senha opcional (só atualiza se enviada e não vazia)."""
+    payload = require_jwt(authorization)
+    require_role(payload, {"admin"})
+    tenant_cpf_cnpj = tenant_from_jwt(payload)
+
+    uid = (user_id or "").strip()
+    if not uid:
+        raise HTTPException(status_code=400, detail="user_id is required")
+
+    email = (payload_in.get("email") or "").strip().lower()
+    full_name = (payload_in.get("full_name") or "").strip() or None
+    role = (payload_in.get("role") or "operator").strip()
+    active = payload_in.get("active")
+    password = (payload_in.get("password") or "").strip()
+
+    if role not in ("admin", "operator"):
+        raise HTTPException(status_code=400, detail="role must be admin or operator")
+    if not email:
+        raise HTTPException(status_code=400, detail="email is required")
+    if active is None:
+        raise HTTPException(status_code=400, detail="active is required")
+
+    with db_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            "SELECT id FROM tenant_users WHERE id = %s AND tenant_cpf_cnpj = %s",
+            (uid, tenant_cpf_cnpj),
+        )
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="User not found")
+
+        if password:
+            pw_hash = hash_password(password)
+            cur.execute(
+                """UPDATE tenant_users
+                   SET email = %s, full_name = %s, role = %s, active = %s, password_hash = %s
+                   WHERE id = %s AND tenant_cpf_cnpj = %s""",
+                (email, full_name, role, 1 if active else 0, pw_hash, uid, tenant_cpf_cnpj),
+            )
+        else:
+            cur.execute(
+                """UPDATE tenant_users
+                   SET email = %s, full_name = %s, role = %s, active = %s
+                   WHERE id = %s AND tenant_cpf_cnpj = %s""",
+                (email, full_name, role, 1 if active else 0, uid, tenant_cpf_cnpj),
+            )
+    return {"ok": True}
+
+
 @app.post("/tenant/users/toggle")
 def toggle_user(payload_in: Dict[str, Any], authorization: Optional[str] = Header(default=None)):
     payload = require_jwt(authorization)
@@ -1821,6 +2058,25 @@ def set_tenant_tv_settings(payload_in: Dict[str, Any], authorization: Optional[s
              1 if tts_enabled else 0, tts_voice, tts_speed, tts_volume, tenant_cpf_cnpj),
         )
     return {"ok": True}
+
+
+@app.post("/tenant/reset-history")
+def tenant_reset_history(authorization: Optional[str] = Header(default=None)):
+    """Limpa todo o histórico de senhas/chamadas do tenant (tickets e calls). Apenas admin."""
+    payload = require_jwt(authorization)
+    require_role(payload, {"admin"})
+    tenant_cpf_cnpj = tenant_from_jwt(payload)
+    with db_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("DELETE FROM tickets WHERE tenant_cpf_cnpj = %s", (tenant_cpf_cnpj,))
+        deleted_tickets = cur.rowcount
+        cur.execute("DELETE FROM calls WHERE tenant_cpf_cnpj = %s", (tenant_cpf_cnpj,))
+        deleted_calls = cur.rowcount
+    return {
+        "ok": True,
+        "deleted_tickets": deleted_tickets,
+        "deleted_calls": deleted_calls,
+    }
 
 
 @app.get("/tenant/admin-settings")

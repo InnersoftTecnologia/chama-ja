@@ -129,6 +129,14 @@ body.theme-light .history-item:hover {
   flex: 1 1 0%;
 }
 
+.flex-shrink-0 {
+  flex-shrink: 0;
+}
+
+.min-h-0 {
+  min-height: 0;
+}
+
 .flex-\[2\] {
   flex: 2 2 0%;
 }
@@ -235,6 +243,10 @@ body.theme-light .history-item:hover {
 /* Spacing */
 .p-4 {
   padding: 1rem;
+}
+
+.p-5 {
+  padding: 1.25rem;
 }
 
 .p-6 {
@@ -420,6 +432,10 @@ body.theme-light .history-item:hover {
   border-color: var(--primary);
 }
 
+.border-primary\/20 {
+  border-color: rgba(0, 212, 255, 0.2);
+}
+
 .border-primary\/30 {
   border-color: rgba(0, 212, 255, 0.3);
 }
@@ -445,6 +461,10 @@ body.theme-light .history-item:hover {
   background-color: rgba(0, 212, 255, 0.05);
 }
 
+.bg-primary\/10 {
+  background-color: rgba(0, 212, 255, 0.1);
+}
+
 .bg-primary\/90 {
   background-color: rgba(0, 212, 255, 0.9);
 }
@@ -459,6 +479,10 @@ body.theme-light .history-item:hover {
 
 .bg-white\/5 {
   background-color: rgba(255, 255, 255, 0.05);
+}
+
+.bg-accent\/5 {
+  background-color: rgba(255, 215, 0, 0.05);
 }
 
 .bg-accent\/10 {
@@ -550,6 +574,10 @@ body.theme-light .history-item:hover {
 
 .text-\[10px\] {
   font-size: 10px;
+}
+
+.text-\[9px\] {
+  font-size: 9px;
 }
 
 .text-\[10rem\] {
@@ -802,6 +830,16 @@ body.theme-light .history-item:hover {
   12% { opacity: 1; transform: scale(1.0); }
   88% { opacity: 1; transform: scale(1.0); }
   100% { opacity: 0; transform: scale(1.02); }
+}
+
+/* Panel fade-in (alternância fila/histórico) */
+@keyframes panelFadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.panel-fade-in {
+  animation: panelFadeIn 0.35s ease-out;
 }
 
 /* Pulse Border */

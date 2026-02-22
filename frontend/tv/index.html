@@ -101,20 +101,23 @@
         <aside
           class="flex-[1.8] glass-panel rounded-3xl flex flex-col overflow-hidden shadow-2xl border border-white/10"
         >
-          <div class="p-6 bg-white/5 border-b border-white/10">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-3">
-                <span class="material-symbols-outlined text-accent text-3xl">history</span>
-                <h4 class="text-xl font-bold tracking-tight">Últimas Senhas</h4>
-              </div>
-              <span
-                class="text-xs font-black uppercase text-accent tracking-[0.15em] bg-accent/10 px-3 py-1.5 rounded-lg border border-accent/20 whitespace-nowrap"
-                >HISTÓRICO</span
-              >
+          <!-- Header alternável (fila / histórico) — preenchido pelo JS -->
+          <div class="flex-shrink-0 p-5 bg-white/5 border-b border-white/10" id="panelHeaderBar"></div>
+
+          <!-- Seção Normal (metade superior) -->
+          <div class="flex-1 flex flex-col min-h-0 border-b border-white/10">
+            <div class="px-5 py-1.5 bg-white/5 flex-shrink-0">
+              <span class="text-[9px] font-black tracking-[0.3em] uppercase" style="color:rgba(255,255,255,0.3)">Normal</span>
             </div>
+            <div class="flex-1 overflow-y-auto px-3 py-2 flex flex-col gap-2" id="panel-normal"></div>
           </div>
-          <div class="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4" id="history">
-            <!-- filled by JS -->
+
+          <!-- Seção Preferencial (metade inferior) -->
+          <div class="flex-1 flex flex-col min-h-0">
+            <div class="px-5 py-1.5 bg-accent/5 flex-shrink-0">
+              <span class="text-[9px] font-black tracking-[0.3em] uppercase text-accent" style="opacity:0.55">Preferencial</span>
+            </div>
+            <div class="flex-1 overflow-y-auto px-3 py-2 flex flex-col gap-2" id="panel-preferential"></div>
           </div>
         </aside>
       </main>

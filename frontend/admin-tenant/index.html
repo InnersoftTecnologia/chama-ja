@@ -165,6 +165,17 @@
       .nav-tabs-scart .nav-link .tab-icon {
         font-size: 1.1rem;
       }
+      /* Modo light: abas inativas mais visíveis (texto e borda mais escuros) */
+      [data-bs-theme="light"] .nav-tabs-scart .nav-link:not(.active) {
+        color: #2c3e50;
+        background: rgba(82, 101, 140, 0.12);
+        border: 1px solid rgba(82, 101, 140, 0.22);
+      }
+      [data-bs-theme="light"] .nav-tabs-scart .nav-link:not(.active):hover {
+        background: rgba(82, 101, 140, 0.18);
+        color: #1a2332;
+        border-color: rgba(82, 101, 140, 0.35);
+      }
       [data-bs-theme="dark"] .nav-tabs-scart {
         border-bottom-color: rgba(82, 101, 140, 0.5);
       }
@@ -297,6 +308,24 @@
       }
       .card-header-gradient * { position: relative; z-index: 1; }
       .card-header-gradient .icon-accent { color: var(--amlic-orange); }
+      /* Modo light: botões no header com contraste forte (fundo mais escuro, texto branco) */
+      [data-bs-theme="light"] .card-header-gradient .btn-action {
+        color: #fff !important;
+        border: 1px solid rgba(255, 255, 255, 0.35);
+      }
+      [data-bs-theme="light"] .card-header-gradient .btn-action.btn-refresh {
+        background: linear-gradient(135deg, #1a5276, #154360) !important;
+      }
+      [data-bs-theme="light"] .card-header-gradient .btn-action.btn-new {
+        background: linear-gradient(135deg, #d68910, #b7950b) !important;
+      }
+      [data-bs-theme="light"] .card-header-gradient .btn-action.btn-delete {
+        background: linear-gradient(135deg, #c53030, #9b2c2c) !important;
+      }
+      [data-bs-theme="light"] .card-header-gradient .btn-action:hover {
+        filter: brightness(1.12);
+        border-color: rgba(255, 255, 255, 0.5);
+      }
 
       .scart-section-title {
         color: var(--text-primary);
@@ -453,6 +482,32 @@
         letter-spacing: -0.02em;
       }
 
+      .dash-chart-container { min-height: 200px; }
+      .dash-chart-bars {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        height: 180px;
+        padding: 10px 0;
+      }
+      .dash-chart-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+      .dash-chart-bar {
+        width: 100%;
+        max-width: 32px;
+        min-height: 4px;
+        background: linear-gradient(180deg, var(--amlic-blue) 0%, var(--amlic-blue-secondary) 100%);
+        border-radius: 6px 6px 0 0;
+        transition: height 0.3s ease;
+      }
+      [data-bs-theme="dark"] .dash-chart-bar { background: linear-gradient(180deg, #5a6d9a 0%, #4a5a7a 100%); }
+      .dash-chart-bar-wrap .small { font-size: 0.7rem; margin-top: 4px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+      .dash-top-op-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(0,0,0,0.06); }
+      [data-bs-theme="dark"] .dash-top-op-row { border-bottom-color: rgba(255,255,255,0.08); }
+      .dash-top-op-row:last-child { border-bottom: none; }
+      .dash-top-op-rank { font-weight: 800; color: var(--amlic-blue); margin-right: 8px; min-width: 20px; }
+      .dash-top-op-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+      .dash-top-op-count { font-weight: 700; color: var(--text-primary); }
+
       /* Modal (SCart padrão visual) */
       .modal-padrao-content {
         border: none;
@@ -503,6 +558,16 @@
       }
       [data-bs-theme="dark"] .list-group-item {
         color: rgba(255, 255, 255, 0.82);
+      }
+      /* Modo light: botão Sair visível */
+      [data-bs-theme="light"] .btn-outline-secondary {
+        color: #495057;
+        border-color: #6c757d;
+      }
+      [data-bs-theme="light"] .btn-outline-secondary:hover {
+        color: #fff;
+        background-color: #6c757d;
+        border-color: #6c757d;
       }
     </style>
   </head>
@@ -626,7 +691,10 @@
 
         <!-- Dashboard Tab -->
         <div class="tab-pane fade show active" id="pane-dashboard" role="tabpanel" aria-labelledby="tab-dashboard">
-          <div class="row g-3">
+          <div class="d-flex justify-content-end mb-2">
+            <button type="button" id="btnRefreshDashboard" class="btn btn-sm btn-outline-primary">Atualizar indicadores</button>
+          </div>
+          <div class="row g-3 mb-4">
             <!-- Métricas principais -->
             <div class="col-6 col-md-4 col-lg-2">
               <div class="metric-card metric-accent-blue p-3 h-100">
@@ -664,7 +732,70 @@
                 <div id="dashLastCall" class="fw-semibold mt-2" style="font-size: 0.85rem;">-</div>
               </div>
             </div>
+          </div>
 
+          <!-- Segunda linha: análise -->
+          <div class="row g-4">
+            <!-- Atendimentos por período -->
+            <div class="col-12 col-lg-8">
+              <div class="card scart-card h-100">
+                <div class="card-header-gradient d-flex align-items-center justify-content-between flex-wrap gap-2">
+                  <div>
+                    <div class="scart-section-title text-white">Atendimentos por período</div>
+                    <div class="small opacity-75 mt-1">Quantidade de atendimentos concluídos por dia.</div>
+                  </div>
+                  <div class="d-flex gap-2">
+                    <button type="button" id="dashPeriod7d" class="btn btn-sm btn-outline-light dash-period-btn active">7 dias</button>
+                    <button type="button" id="dashPeriod30d" class="btn btn-sm btn-outline-light dash-period-btn">30 dias</button>
+                  </div>
+                </div>
+                <div class="card-body p-4">
+                  <div id="dashChartContainer" class="dash-chart-container">
+                    <div id="dashChartBars" class="dash-chart-bars"></div>
+                  </div>
+                  <div id="dashChartEmpty" class="text-body-secondary small text-center py-4 d-none">Nenhum atendimento no período.</div>
+                </div>
+              </div>
+            </div>
+            <!-- Melhor atendente -->
+            <div class="col-12 col-lg-4">
+              <div class="card scart-card h-100">
+                <div class="card-header-gradient">
+                  <div>
+                    <div class="scart-section-title text-white">Ranking de atendentes</div>
+                    <div class="small opacity-75 mt-1">Quem mais finalizou atendimentos.</div>
+                  </div>
+                </div>
+                <div class="card-body p-4">
+                  <div id="dashTopOperatorsList"></div>
+                  <button type="button" id="btnOpenRankingModal" class="btn btn-sm btn-outline-primary mt-3 w-100">Ver ranking completo</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Últimos atendimentos -->
+          <div class="row mt-2">
+            <div class="col-12">
+              <div class="card scart-card">
+                <div class="card-header-gradient d-flex align-items-center justify-content-between flex-wrap gap-2">
+                  <div>
+                    <div class="scart-section-title text-white">Últimos atendimentos</div>
+                    <div class="small opacity-75 mt-1">Senhas finalizadas recentemente.</div>
+                  </div>
+                  <button type="button" id="btnOpenHistoryModal" class="btn btn-sm btn-outline-light">Ver todos com filtros</button>
+                </div>
+                <div class="card-body p-0">
+                  <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0" id="dashRecentTable">
+                      <thead><tr><th>Senha</th><th>Serviço</th><th>Atendente</th><th>Guichê</th><th class="text-nowrap">Finalizado em</th></tr></thead>
+                      <tbody id="dashRecentBody"></tbody>
+                    </table>
+                  </div>
+                  <div id="dashRecentEmpty" class="text-body-secondary small text-center py-4 d-none">Nenhum atendimento recente.</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -756,6 +887,7 @@
                 </div>
                 <div class="d-flex gap-2">
                   <button id="btnRefreshTVSettings" class="btn-action btn-refresh">Atualizar</button>
+                  <button type="button" id="btnResetHistory" class="btn-action btn-delete">Resetar histórico</button>
                 </div>
               </div>
             </div>
@@ -1121,19 +1253,94 @@
       </div>
     </div>
 
-    <!-- User Modal (SCart-style) -->
+    <!-- Modal: Ranking de atendentes -->
+    <div class="modal fade" id="rankingModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modal-padrao-content">
+          <div class="modal-header modal-padrao-header">
+            <div>
+              <div class="fw-bold" style="font-size:1.15rem;">Ranking de atendentes</div>
+              <div class="small opacity-75 mt-1">Atendimentos concluídos por período.</div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="d-flex gap-2 mb-3">
+              <select id="rankingPeriod" class="form-select form-select-sm" style="max-width: 140px;">
+                <option value="today">Hoje</option>
+                <option value="7d" selected>Últimos 7 dias</option>
+                <option value="30d">Últimos 30 dias</option>
+              </select>
+              <button type="button" id="btnApplyRanking" class="btn btn-sm btn-scart-primary">Aplicar</button>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm align-middle">
+                <thead><tr><th>#</th><th>Atendente</th><th>Atendimentos</th></tr></thead>
+                <tbody id="rankingModalBody"></tbody>
+              </table>
+            </div>
+            <div id="rankingModalEmpty" class="text-body-secondary small text-center py-4 d-none">Nenhum dado no período.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Histórico de atendimentos (com filtros) -->
+    <div class="modal fade" id="historyModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content modal-padrao-content">
+          <div class="modal-header modal-padrao-header">
+            <div>
+              <div class="fw-bold" style="font-size:1.15rem;">Histórico de atendimentos</div>
+              <div class="small opacity-75 mt-1">Lista com filtros por data e atendente.</div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="row g-3 mb-3">
+              <div class="col-12 col-md-3">
+                <label class="form-label small">De (data)</label>
+                <input type="date" id="historyFrom" class="form-control form-control-sm" />
+              </div>
+              <div class="col-12 col-md-3">
+                <label class="form-label small">Até (data)</label>
+                <input type="date" id="historyTo" class="form-control form-control-sm" />
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label small">Atendente</label>
+                <select id="historyOperator" class="form-select form-select-sm">
+                  <option value="">Todos</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-2 d-flex align-items-end">
+                <button type="button" id="btnApplyHistory" class="btn btn-sm btn-scart-primary w-100">Filtrar</button>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm align-middle">
+                <thead><tr><th>Senha</th><th>Serviço</th><th>Prioridade</th><th>Atendente</th><th>Guichê</th><th class="text-nowrap">Chamado</th><th class="text-nowrap">Finalizado</th></tr></thead>
+                <tbody id="historyModalBody"></tbody>
+              </table>
+            </div>
+            <div id="historyModalEmpty" class="text-body-secondary small text-center py-4 d-none">Nenhum registro com os filtros informados.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Modal (SCart-style) - Novo / Editar operador -->
     <div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content modal-padrao-content">
           <div class="modal-header modal-padrao-header">
             <div>
-              <div class="fw-bold" style="font-size:1.15rem;">Novo operador</div>
-              <div class="small opacity-75">Crie um usuário para realizar chamadas.</div>
+              <div id="userModalTitle" class="fw-bold" style="font-size:1.15rem;">Novo operador</div>
+              <div id="userModalSubtitle" class="small opacity-75">Crie um usuário para realizar chamadas.</div>
             </div>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
           </div>
           <div class="modal-body p-4">
-            <div class="alert alert-warning small">
+            <div id="userModalAlert" class="alert alert-warning small">
               Antes de confirmar: defina uma senha forte e mantenha o email correto para login.
             </div>
             <div class="row g-3">
@@ -1144,6 +1351,13 @@
               <div class="col-12 col-md-6">
                 <label class="form-label fw-semibold">Nome</label>
                 <input id="uName" class="form-control scart-input" placeholder="Nome do operador" />
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold">Tipo</label>
+                <select id="uRole" class="form-select scart-input">
+                  <option value="operator">Operador</option>
+                  <option value="admin">Admin</option>
+                </select>
               </div>
               <div class="col-12 col-md-6">
                 <label class="form-label fw-semibold">Senha</label>
@@ -1158,7 +1372,7 @@
             </div>
           </div>
           <div class="modal-footer p-4 pt-0 border-0 d-flex justify-content-between">
-            <div class="small text-body-secondary">Role será <b>operator</b>.</div>
+            <div id="userModalHint" class="small text-body-secondary">Tipo define permissões: operador só chama senhas; admin acessa este painel.</div>
             <div class="d-flex gap-2">
               <button type="button" class="btn-scart-secondary" data-bs-dismiss="modal">Cancelar</button>
               <button id="btnSaveUser" type="button" class="btn-scart-primary">Salvar</button>
@@ -1329,6 +1543,7 @@
         }
       }
 
+      let dashAnalyticsPeriod = "7d";
       async function refreshDashboard() {
         const d = await api("/tenant/dashboard", { headers: authHeaders() });
         const t = d.tenant || {};
@@ -1343,6 +1558,83 @@
         setText("dashInService", String(d.in_service_last_60m ?? "-"));
         setText("dashAttendedToday", String(d.tickets_attended_today ?? "-"));
         setText("dashLastCall", fmtShortDt(d.last_called_at));
+
+        // Carregar cada bloco independentemente para não deixar tudo em branco se uma API falhar
+        try {
+          const analytics = await api(`/tenant/dashboard/analytics?period=${dashAnalyticsPeriod}`, { headers: authHeaders() }).catch(e => { console.warn("Dashboard analytics:", e); return { labels: [], values: [] }; });
+          renderDashboardChart(analytics || { labels: [], values: [] });
+        } catch (e) {
+          console.warn("Dashboard analytics:", e);
+          renderDashboardChart({ labels: [], values: [] });
+        }
+        try {
+          const topOps = await api("/tenant/dashboard/top-operators?period=7d&limit=5", { headers: authHeaders() }).catch(e => { console.warn("Dashboard top-operators:", e); return []; });
+          renderDashboardTopOperators(Array.isArray(topOps) ? topOps : []);
+        } catch (e) {
+          console.warn("Dashboard top-operators:", e);
+          renderDashboardTopOperators([]);
+        }
+        try {
+          const history = await api("/tenant/dashboard/history?limit=10", { headers: authHeaders() }).catch(e => { console.warn("Dashboard history:", e); return []; });
+          renderDashboardRecent(Array.isArray(history) ? history : []);
+        } catch (e) {
+          console.warn("Dashboard history:", e);
+          renderDashboardRecent([]);
+        }
+      }
+      function renderDashboardChart(data) {
+        const container = document.getElementById("dashChartBars");
+        const empty = document.getElementById("dashChartEmpty");
+        if (!container) return;
+        const labels = data.labels || [];
+        const values = data.values || [];
+        const maxVal = Math.max(1, ...values);
+        if (labels.length === 0) {
+          container.innerHTML = "";
+          if (empty) empty.classList.remove("d-none");
+          return;
+        }
+        if (empty) empty.classList.add("d-none");
+        container.innerHTML = labels.map((label, i) => {
+          const v = values[i] || 0;
+          const pct = maxVal ? Math.round((v / maxVal) * 100) : 0;
+          return `<div class="dash-chart-bar-wrap"><div class="dash-chart-bar" style="height: ${Math.max(4, pct)}%"></div><span class="small">${escapeHtml(label)}</span></div>`;
+        }).join("");
+      }
+      function renderDashboardTopOperators(list) {
+        const el = document.getElementById("dashTopOperatorsList");
+        if (!el) return;
+        if (!Array.isArray(list) || list.length === 0) {
+          el.innerHTML = '<p class="text-body-secondary small mb-0">Nenhum dado no período.</p>';
+          return;
+        }
+        el.innerHTML = list.map((op, i) => `
+          <div class="dash-top-op-row">
+            <span class="dash-top-op-rank">${i + 1}º</span>
+            <span class="dash-top-op-name" title="${escapeHtml(op.operator_name)}">${escapeHtml(op.operator_name)}</span>
+            <span class="dash-top-op-count">${op.completed_count}</span>
+          </div>
+        `).join("");
+      }
+      function renderDashboardRecent(list) {
+        const tbody = document.getElementById("dashRecentBody");
+        const empty = document.getElementById("dashRecentEmpty");
+        if (!tbody) return;
+        if (!Array.isArray(list) || list.length === 0) {
+          tbody.innerHTML = "";
+          if (empty) empty.classList.remove("d-none");
+          return;
+        }
+        if (empty) empty.classList.add("d-none");
+        tbody.innerHTML = list.map(h => `
+          <tr>
+            <td class="fw-semibold">${escapeHtml(h.ticket_code || "—")}</td>
+            <td>${escapeHtml(h.service_name || "—")}</td>
+            <td>${escapeHtml(h.operator_name || "—")}</td>
+            <td>${escapeHtml(h.counter_name || "—")}</td>
+            <td class="text-nowrap">${escapeHtml(fmtDt(h.completed_at))}</td>
+          </tr>
+        `).join("");
       }
 
       async function refreshBrandingPreview() {
@@ -1365,8 +1657,11 @@
         } catch {}
       }
 
+      let lastUsers = [];
+      let editingUserId = null;
       async function refreshUsers() {
         const data = await api("/tenant/users", { headers: authHeaders() });
+        lastUsers = Array.isArray(data) ? data : [];
         renderUsersTable(data);
       }
       async function refreshCounters() {
@@ -1571,10 +1866,10 @@
             <tr>
               <th>Email</th>
               <th>Nome</th>
-              <th>Role</th>
+              <th>Tipo</th>
               <th>Status</th>
               <th class="text-nowrap">Criado em</th>
-              <th style="width: 180px"></th>
+              <th style="width: 220px"></th>
             </tr>
           </thead>
           <tbody>
@@ -1585,7 +1880,8 @@
                 <td>${escapeHtml(u.role || "")}</td>
                 <td>${u.active ? '<span class="badge text-bg-success">ativo</span>' : '<span class="badge text-bg-secondary">inativo</span>'}</td>
                 <td class="text-nowrap">${escapeHtml(fmtDt(u.created_at))}</td>
-                <td class="text-end d-flex gap-1 justify-content-end">
+                <td class="text-end d-flex gap-1 justify-content-end flex-wrap">
+                  <button class="btn-action btn-refresh btn-sm" data-edit-user="${escapeHtml(u.id || "")}" title="Editar">Editar</button>
                   <button class="btn-action ${u.active ? 'btn-toggle-off' : 'btn-toggle-on'}" data-toggle-user="${escapeHtml(u.id || "")}" data-active="${u.active ? '1' : '0'}">${u.active ? 'Desativar' : 'Ativar'}</button>
                   <button class="btn-action btn-delete" data-del-user="${escapeHtml(u.id || "")}">Excluir</button>
                 </td>
@@ -1818,6 +2114,125 @@
 
       document.getElementById("btnRefreshUsers").addEventListener("click", refreshUsers);
       document.getElementById("btnRefreshCounters").addEventListener("click", refreshCounters);
+      document.getElementById("btnRefreshDashboard")?.addEventListener("click", () => refreshDashboard().catch(() => {}));
+
+      document.getElementById("dashPeriod7d")?.addEventListener("click", async () => {
+        dashAnalyticsPeriod = "7d";
+        document.querySelectorAll(".dash-period-btn").forEach(b => { b.classList.remove("active"); });
+        document.getElementById("dashPeriod7d")?.classList.add("active");
+        const data = await api(`/tenant/dashboard/analytics?period=7d`, { headers: authHeaders() });
+        renderDashboardChart(data);
+      });
+      document.getElementById("dashPeriod30d")?.addEventListener("click", async () => {
+        dashAnalyticsPeriod = "30d";
+        document.querySelectorAll(".dash-period-btn").forEach(b => { b.classList.remove("active"); });
+        document.getElementById("dashPeriod30d")?.classList.add("active");
+        const data = await api(`/tenant/dashboard/analytics?period=30d`, { headers: authHeaders() });
+        renderDashboardChart(data);
+      });
+
+      const rankingModal = new bootstrap.Modal(document.getElementById("rankingModal"));
+      document.getElementById("btnOpenRankingModal")?.addEventListener("click", async () => {
+        const period = document.getElementById("rankingPeriod")?.value || "7d";
+        const list = await api(`/tenant/dashboard/top-operators?period=${period}&limit=20`, { headers: authHeaders() });
+        const tbody = document.getElementById("rankingModalBody");
+        const empty = document.getElementById("rankingModalEmpty");
+        if (Array.isArray(list) && list.length > 0) {
+          empty.classList.add("d-none");
+          tbody.innerHTML = list.map((op, i) => `<tr><td class="fw-bold">${i + 1}º</td><td>${escapeHtml(op.operator_name)}</td><td>${op.completed_count}</td></tr>`).join("");
+        } else {
+          tbody.innerHTML = "";
+          empty.classList.remove("d-none");
+        }
+        rankingModal.show();
+      });
+      document.getElementById("btnApplyRanking")?.addEventListener("click", async () => {
+        const period = document.getElementById("rankingPeriod")?.value || "7d";
+        const list = await api(`/tenant/dashboard/top-operators?period=${period}&limit=20`, { headers: authHeaders() });
+        const tbody = document.getElementById("rankingModalBody");
+        const empty = document.getElementById("rankingModalEmpty");
+        if (Array.isArray(list) && list.length > 0) {
+          empty.classList.add("d-none");
+          tbody.innerHTML = list.map((op, i) => `<tr><td class="fw-bold">${i + 1}º</td><td>${escapeHtml(op.operator_name)}</td><td>${op.completed_count}</td></tr>`).join("");
+        } else {
+          tbody.innerHTML = "";
+          empty.classList.remove("d-none");
+        }
+      });
+
+      const historyModal = new bootstrap.Modal(document.getElementById("historyModal"));
+      document.getElementById("btnOpenHistoryModal")?.addEventListener("click", async () => {
+        const users = await api("/tenant/users", { headers: authHeaders() });
+        const sel = document.getElementById("historyOperator");
+        if (sel) {
+          const opts = (users || []).filter(u => u.role === "operator" || u.role === "admin").map(u => `<option value="${escapeHtml(u.id || "")}">${escapeHtml(u.full_name || u.email || u.id || "—")}</option>`);
+          sel.innerHTML = '<option value="">Todos</option>' + opts.join("");
+        }
+        const from = document.getElementById("historyFrom");
+        const to = document.getElementById("historyTo");
+        const toDate = new Date();
+        const fromDate = new Date(toDate);
+        fromDate.setDate(fromDate.getDate() - 7);
+        if (from) from.value = fromDate.toISOString().slice(0, 10);
+        if (to) to.value = toDate.toISOString().slice(0, 10);
+        const fromVal = from?.value || "";
+        const toVal = to?.value || "";
+        const opId = document.getElementById("historyOperator")?.value || "";
+        const params = new URLSearchParams({ limit: "100" });
+        if (fromVal) params.set("from_date", fromVal);
+        if (toVal) params.set("to_date", toVal);
+        if (opId) params.set("operator_id", opId);
+        const list = await api(`/tenant/dashboard/history?${params}`, { headers: authHeaders() });
+        const tbody = document.getElementById("historyModalBody");
+        const empty = document.getElementById("historyModalEmpty");
+        if (Array.isArray(list) && list.length > 0) {
+          empty.classList.add("d-none");
+          tbody.innerHTML = list.map(h => `
+            <tr>
+              <td class="fw-semibold">${escapeHtml(h.ticket_code || "—")}</td>
+              <td>${escapeHtml(h.service_name || "—")}</td>
+              <td>${escapeHtml(h.priority || "—")}</td>
+              <td>${escapeHtml(h.operator_name || "—")}</td>
+              <td>${escapeHtml(h.counter_name || "—")}</td>
+              <td class="text-nowrap small">${escapeHtml(fmtDt(h.called_at))}</td>
+              <td class="text-nowrap small">${escapeHtml(fmtDt(h.completed_at))}</td>
+            </tr>
+          `).join("");
+        } else {
+          tbody.innerHTML = "";
+          empty.classList.remove("d-none");
+        }
+        historyModal.show();
+      });
+      document.getElementById("btnApplyHistory")?.addEventListener("click", async () => {
+        const fromVal = document.getElementById("historyFrom")?.value || "";
+        const toVal = document.getElementById("historyTo")?.value || "";
+        const opId = document.getElementById("historyOperator")?.value || "";
+        const params = new URLSearchParams({ limit: "100" });
+        if (fromVal) params.set("from_date", fromVal);
+        if (toVal) params.set("to_date", toVal);
+        if (opId) params.set("operator_id", opId);
+        const list = await api(`/tenant/dashboard/history?${params}`, { headers: authHeaders() });
+        const tbody = document.getElementById("historyModalBody");
+        const empty = document.getElementById("historyModalEmpty");
+        if (Array.isArray(list) && list.length > 0) {
+          empty.classList.add("d-none");
+          tbody.innerHTML = list.map(h => `
+            <tr>
+              <td class="fw-semibold">${escapeHtml(h.ticket_code || "—")}</td>
+              <td>${escapeHtml(h.service_name || "—")}</td>
+              <td>${escapeHtml(h.priority || "—")}</td>
+              <td>${escapeHtml(h.operator_name || "—")}</td>
+              <td>${escapeHtml(h.counter_name || "—")}</td>
+              <td class="text-nowrap small">${escapeHtml(fmtDt(h.called_at))}</td>
+              <td class="text-nowrap small">${escapeHtml(fmtDt(h.completed_at))}</td>
+            </tr>
+          `).join("");
+        } else {
+          tbody.innerHTML = "";
+          empty.classList.remove("d-none");
+        }
+      });
       document.getElementById("btnRefreshServices").addEventListener("click", refreshServices);
       document.getElementById("btnRefreshAnnouncements").addEventListener("click", refreshAnnouncements);
       document.getElementById("btnRefreshYouTube").addEventListener("click", refreshYouTube);
@@ -2024,28 +2439,66 @@
 
 
       document.getElementById("btnOpenUserModal").addEventListener("click", () => {
+        editingUserId = null;
+        document.getElementById("userModalTitle").textContent = "Novo operador";
+        document.getElementById("userModalSubtitle").textContent = "Crie um usuário para realizar chamadas.";
+        document.getElementById("userModalAlert").textContent = "Antes de confirmar: defina uma senha forte e mantenha o email correto para login.";
+        document.getElementById("userModalAlert").classList.remove("d-none");
         document.getElementById("uEmail").value = "";
         document.getElementById("uName").value = "";
         document.getElementById("uPass").value = "";
+        document.getElementById("uPass").placeholder = "mín. 6 caracteres";
+        document.getElementById("uRole").value = "operator";
         document.getElementById("uActive").checked = true;
         userModal.show();
       });
+      document.getElementById("usersTable").addEventListener("click", (e) => {
+        const btn = e.target.closest("[data-edit-user]");
+        if (!btn) return;
+        const id = (btn.getAttribute("data-edit-user") || "").trim();
+        const user = lastUsers.find((u) => u.id === id);
+        if (!user) return;
+        editingUserId = id;
+        document.getElementById("userModalTitle").textContent = "Editar operador";
+        document.getElementById("userModalSubtitle").textContent = "Altere os dados. Deixe a senha em branco para manter a atual.";
+        document.getElementById("userModalAlert").textContent = "Altere apenas o que precisar. Senha em branco mantém a atual.";
+        document.getElementById("userModalAlert").classList.remove("d-none");
+        document.getElementById("uEmail").value = user.email || "";
+        document.getElementById("uName").value = user.full_name || "";
+        document.getElementById("uRole").value = user.role === "admin" ? "admin" : "operator";
+        document.getElementById("uPass").value = "";
+        document.getElementById("uPass").placeholder = "deixe em branco para manter";
+        document.getElementById("uActive").checked = Boolean(user.active);
+        userModal.show();
+      });
       document.getElementById("btnSaveUser").addEventListener("click", async () => {
-        const payload = {
-          email: document.getElementById("uEmail").value,
-          full_name: document.getElementById("uName").value,
-          password: document.getElementById("uPass").value,
-          role: "operator",
-          active: Boolean(document.getElementById("uActive").checked),
-        };
-        if (!String(payload.email || "").trim() || !String(payload.password || "").trim()) {
-          swalErr("Operador", "Email e senha são obrigatórios.");
+        const email = String(document.getElementById("uEmail").value || "").trim();
+        const full_name = String(document.getElementById("uName").value || "").trim();
+        const password = String(document.getElementById("uPass").value || "").trim();
+        const role = document.getElementById("uRole").value || "operator";
+        const active = Boolean(document.getElementById("uActive").checked);
+        if (!email) {
+          swalErr("Operador", "Email é obrigatório.");
           return;
         }
-        await api("/tenant/users", { method: "POST", headers: authHeaders(), body: JSON.stringify(payload) });
-        userModal.hide();
-        await refreshUsers();
-        swalOk("Operador criado", "Usuário cadastrado.");
+        if (editingUserId) {
+          const payload = { email, full_name, role, active };
+          if (password) payload.password = password;
+          await api(`/tenant/users/${editingUserId}`, { method: "PUT", headers: authHeaders(), body: JSON.stringify(payload) });
+          userModal.hide();
+          editingUserId = null;
+          await refreshUsers();
+          swalOk("Operador atualizado", "Dados salvos.");
+        } else {
+          if (!password) {
+            swalErr("Operador", "Senha é obrigatória para novo usuário.");
+            return;
+          }
+          await api("/tenant/users", { method: "POST", headers: authHeaders(), body: JSON.stringify({ email, full_name, password, role, active }) });
+          userModal.hide();
+          await refreshUsers();
+          swalOk("Operador criado", "Usuário cadastrado.");
+        }
       });
 
       document.getElementById("btnOpenCounterModal").addEventListener("click", () => {
@@ -2117,6 +2570,29 @@
 
       // TV Settings buttons
       document.getElementById("btnRefreshTVSettings").addEventListener("click", refreshTVSettings);
+      document.getElementById("btnResetHistory").addEventListener("click", async () => {
+        const ok = await Swal.fire({
+          title: "Resetar histórico?",
+          text: "Todas as senhas e chamadas serão apagadas. A TV e o painel ficarão vazios.",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonColor: "#e53e3e",
+          cancelButtonText: "Cancelar",
+          confirmButtonText: "Sim, resetar",
+        });
+        if (!ok.isConfirmed) return;
+        try {
+          const r = await api("/tenant/reset-history", { method: "POST", headers: authHeaders() });
+          await Swal.fire({
+            icon: "success",
+            title: "Histórico resetado",
+            text: `${r.deleted_tickets ?? 0} senhas e ${r.deleted_calls ?? 0} chamadas removidas.`,
+          });
+          await refreshDashboard();
+        } catch (e) {
+          swalErr("Erro", String(e));
+        }
+      });
       document.getElementById("btnThemeToggle").addEventListener("click", async () => {
         currentTVSettings.tv_theme = currentTVSettings.tv_theme === "dark" ? "light" : "dark";
         updateTVSettingsUI();

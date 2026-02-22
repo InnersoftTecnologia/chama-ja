@@ -1,0 +1,213 @@
+/* Chama Já — Dashboard (página principal) */
+:root {
+  --dash-bg: #0f1419;
+  --dash-surface: #1a2332;
+  --dash-surface-hover: #243044;
+  --dash-border: rgba(255, 255, 255, 0.08);
+  --dash-text: #e6edf3;
+  --dash-text-muted: #8b949e;
+  --dash-primary: #00d4ff;
+  --dash-accent: #ffd700;
+  --dash-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --dash-radius: 16px;
+}
+
+[data-theme="light"] {
+  --dash-bg: #f0f4f8;
+  --dash-surface: #ffffff;
+  --dash-surface-hover: #e8eef5;
+  --dash-border: rgba(0, 0, 0, 0.08);
+  --dash-text: #1a2332;
+  --dash-text-muted: #5a6c7d;
+  --dash-primary: #0077b6;
+  --dash-accent: #e6a700;
+  --dash-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Montserrat", system-ui, -apple-system, sans-serif;
+  background: var(--dash-bg);
+  color: var(--dash-text);
+  display: flex;
+  flex-direction: column;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--dash-border);
+  background: var(--dash-surface);
+}
+
+.header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.logo {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--dash-primary);
+  letter-spacing: -0.02em;
+}
+
+.tagline {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--dash-text-muted);
+}
+
+.theme-toggle {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--dash-border);
+  background: var(--dash-bg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.theme-toggle:hover {
+  background: var(--dash-surface-hover);
+  transform: scale(1.05);
+}
+
+.theme-icon {
+  font-size: 1.25rem;
+}
+
+.theme-icon.moon {
+  display: none;
+}
+
+[data-theme="light"] .theme-icon.sun {
+  display: none;
+}
+
+[data-theme="light"] .theme-icon.moon {
+  display: inline;
+}
+
+.main {
+  flex: 1;
+  padding: 2rem 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+
+.card {
+  display: block;
+  padding: 1.5rem;
+  background: var(--dash-surface);
+  border: 1px solid var(--dash-border);
+  border-radius: var(--dash-radius);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  box-shadow: var(--dash-shadow);
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  border-color: var(--dash-primary);
+}
+
+[data-theme="light"] .card:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.card-icon {
+  font-size: 2rem;
+  margin-bottom: 0.75rem;
+  line-height: 1;
+}
+
+.card-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.card-desc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--dash-text-muted);
+  line-height: 1.4;
+}
+
+.card-badge {
+  display: inline-block;
+  margin-top: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--dash-primary);
+  background: rgba(0, 212, 255, 0.12);
+  border-radius: 6px;
+}
+
+.card-with-qr .card-qr {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--dash-border);
+  text-align: center;
+}
+
+.card-qr-label {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  color: var(--dash-text-muted);
+}
+
+.card-qr-img {
+  display: block;
+  margin: 0 auto;
+  border-radius: 8px;
+  background: #fff;
+  padding: 6px;
+}
+
+.footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--dash-border);
+  text-align: center;
+}
+
+.footer p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--dash-text-muted);
+}
+
+@media (max-width: 640px) {
+  .header-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .cards {
+    grid-template-columns: 1fr;
+  }
+}

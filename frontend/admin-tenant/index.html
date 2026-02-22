@@ -380,6 +380,11 @@
       .btn-action.btn-new { background: linear-gradient(135deg, #f39c12, #e67e22); color: #fff; }
       .btn-action.btn-toggle-on { background: linear-gradient(135deg, #48bb78, #38a169); color: #fff; }
       .btn-action.btn-toggle-off { background: linear-gradient(135deg, #a0aec0, #718096); color: #fff; }
+      /* Single toggle button: ativo = verde/primary, inativo = cinza — light e dark */
+      .tv-toggle-btn.btn-toggle-on { background: linear-gradient(135deg, #48bb78, #38a169); color: #fff; border: 1px solid rgba(56,161,105,0.5); }
+      .tv-toggle-btn.btn-toggle-off { background: linear-gradient(135deg, #a0aec0, #718096); color: #fff; border: 1px solid rgba(113,128,150,0.4); }
+      [data-bs-theme="dark"] .tv-toggle-btn.btn-toggle-on { background: linear-gradient(135deg, #38a169, #2f855a); color: #fff; border-color: rgba(72,187,120,0.4); }
+      [data-bs-theme="dark"] .tv-toggle-btn.btn-toggle-off { background: linear-gradient(135deg, #4a5568, #2d3748); color: rgba(255,255,255,0.85); border-color: rgba(255,255,255,0.15); }
       .btn-action.btn-filter-active { background: linear-gradient(135deg, var(--scart-primary), #1e3f73); color: #fff; }
       .btn-action:not(.btn-filter-active) { background: rgba(0, 0, 0, 0.1); color: var(--text-secondary); }
       [data-bs-theme="dark"] .btn-action:not(.btn-filter-active) { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.7); }
@@ -595,11 +600,6 @@
           </button>
         </li>
         <li class="nav-item" role="presentation">
-          <button class="nav-link" id="tab-branding" data-bs-toggle="tab" data-bs-target="#pane-branding" type="button" role="tab" aria-controls="pane-branding" aria-selected="false">
-            <span class="tab-icon">🎨</span> Branding
-          </button>
-        </li>
-        <li class="nav-item" role="presentation">
           <button class="nav-link" id="tab-operators" data-bs-toggle="tab" data-bs-target="#pane-operators" type="button" role="tab" aria-controls="pane-operators" aria-selected="false">
             <span class="tab-icon">👥</span> Operadores
           </button>
@@ -665,42 +665,6 @@
               </div>
             </div>
 
-          </div>
-        </div>
-
-        <!-- Branding Tab -->
-        <div class="tab-pane fade" id="pane-branding" role="tabpanel" aria-labelledby="tab-branding">
-          <div class="card scart-card">
-            <div class="card-header-gradient">
-              <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
-                <div>
-                  <div class="scart-section-title text-white">Logo do Tenant</div>
-                  <div class="small opacity-75 mt-1">Envie PNG/JPG/SVG. A TV carrega automaticamente.</div>
-                </div>
-              </div>
-            </div>
-            <div class="card-body p-4">
-              <div class="branding-grid mt-1">
-                <div>
-                  <div class="small text-body-secondary mb-2">Selecione o arquivo</div>
-                  <input id="logoFile" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml" class="form-control scart-input" />
-                  <div class="d-flex gap-3 mt-3 btn-h44">
-                    <button id="btnUploadLogo" class="btn-scart-primary flex-fill">Salvar logo</button>
-                    <button id="btnClearLogo" class="btn-scart-secondary flex-fill">Remover</button>
-                  </div>
-                </div>
-                <div>
-                  <div class="small text-body-secondary mb-2">Preview</div>
-                  <div class="preview-box">
-                    <img id="logoPreview" alt="logo preview" style="max-height:90px; max-width:100%; display:none" />
-                    <div id="logoPreviewEmpty" class="text-body-secondary small">Sem logo configurada.</div>
-                  </div>
-                </div>
-              </div>
-              <div class="alert alert-soft mt-3 mb-0 small">
-                Dica: use SVG/PNG com fundo transparente. A TV aplica automaticamente no próximo refresh/poll.
-              </div>
-            </div>
           </div>
         </div>
 
@@ -806,8 +770,7 @@
                         <div class="text-body-secondary small">Aparência (cores) do painel TV.</div>
                       </div>
                       <div class="d-flex gap-2">
-                        <button id="btnThemeDark" class="btn-action btn-toggle-on" style="min-width: 100px;">Dark</button>
-                        <button id="btnThemeLight" class="btn-action btn-toggle-off" style="min-width: 100px;">Light</button>
+                        <button type="button" id="btnThemeToggle" class="btn-action btn-toggle-on tv-toggle-btn" style="min-width: 100px;">Dark</button>
                       </div>
                     </div>
                     <div class="alert alert-soft small mb-0 mt-3">
@@ -822,56 +785,128 @@
                     <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
                       <div>
                         <div class="fw-bold">Áudio de Chamada</div>
-                        <div class="text-body-secondary small">Som (bip) quando uma nova senha é chamada.</div>
+                        <div class="text-body-secondary small">Ativar ou desativar o som quando uma senha é chamada.</div>
                       </div>
                       <div class="d-flex gap-2">
-                        <button id="btnAudioOn" class="btn-action btn-toggle-on" style="min-width: 110px;">Ativado</button>
-                        <button id="btnAudioOff" class="btn-action btn-toggle-off" style="min-width: 110px;">Desativado</button>
+                        <button type="button" id="btnAudioToggle" class="btn-action btn-toggle-on tv-toggle-btn" style="min-width: 110px;">Ativado</button>
                       </div>
                     </div>
                     <div class="alert alert-soft small mb-0 mt-3">
-                      Se estiver em um local sensível a ruídos, desative o bip e use apenas o destaque visual da chamada.
+                      Se estiver em um local sensível a ruídos, desative e use apenas o destaque visual.
                     </div>
                   </div>
                 </div>
 
-                <!-- Card: Áudio do vídeo -->
-                <div class="col-12 col-lg-6">
-                  <div class="border rounded-4 p-3 bg-body-tertiary">
-                    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
-                      <div>
-                        <div class="fw-bold">Áudio do Vídeo</div>
-                        <div class="text-body-secondary small">Controle remoto do som do YouTube na TV.</div>
+                <!-- Linha única: 3 colunas — Som da chamada | Áudio do vídeo | Reprodução do vídeo -->
+                <div class="row g-4 mb-4">
+                  <!-- Card: Som da chamada -->
+                  <div class="col-12 col-md-4">
+                    <div class="border rounded-4 p-3 bg-body-tertiary h-100">
+                      <div class="fw-bold">Som da Chamada</div>
+                      <div class="text-body-secondary small mb-2">Áudio tocado na TV quando o número é exibido (pasta <code>sounds/</code>).</div>
+                      <div class="d-flex gap-2 align-items-center flex-wrap">
+                        <select id="selectCallSound" class="form-select form-select-sm" style="flex: 1; min-width: 140px;">
+                          <option value="notification-1.mp3">notification-1.mp3</option>
+                        </select>
+                        <button type="button" id="btnTestCallSound" class="btn btn-sm btn-outline-primary">Testar</button>
                       </div>
-                      <div class="d-flex gap-2">
-                        <button id="btnVideoAudioOn" class="btn-action btn-toggle-off" style="min-width: 110px;">Ativado</button>
-                        <button id="btnVideoAudioOff" class="btn-action btn-toggle-on" style="min-width: 110px;">Mutado</button>
+                      <div class="alert alert-soft small mb-0 mt-3">
+                        O padrão é <b>notification-1.mp3</b>. Clique em Testar para ouvir.
                       </div>
                     </div>
-                    <div class="alert alert-soft small mb-0 mt-3">
-                      Nota: alguns navegadores bloqueiam autoplay com som. Se necessário, use o botão “Ativar Áudio” na TV.
+                  </div>
+                  <!-- Card: Áudio do vídeo -->
+                  <div class="col-12 col-md-4">
+                    <div class="border rounded-4 p-3 bg-body-tertiary h-100">
+                      <div class="fw-bold">Áudio do Vídeo</div>
+                      <div class="text-body-secondary small mb-2">Controle remoto do som do YouTube na TV.</div>
+                      <div class="d-flex gap-2 justify-content-end">
+                        <button type="button" id="btnVideoAudioToggle" class="btn-action btn-toggle-on tv-toggle-btn" style="min-width: 90px;">Ativado</button>
+                      </div>
+                      <div class="alert alert-soft small mb-0 mt-3">
+                        Se necessário, use o botão "Ativar Áudio" na TV.
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Card: Reprodução do vídeo -->
+                  <div class="col-12 col-md-4">
+                    <div class="border rounded-4 p-3 bg-body-tertiary h-100">
+                      <div class="fw-bold">Reprodução do Vídeo</div>
+                      <div class="text-body-secondary small mb-2">Pausar ou reproduzir o vídeo na TV.</div>
+                      <div class="d-flex gap-2 justify-content-end">
+                        <button type="button" id="btnVideoPlaybackToggle" class="btn-action btn-toggle-on tv-toggle-btn" style="min-width: 90px;">Reproduzir</button>
+                      </div>
+                      <div class="alert alert-soft small mb-0 mt-3">
+                        Use <b>Pausar</b> durante comunicados importantes.
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <!-- Card: Reprodução do vídeo -->
+                <!-- Card: Anúncio de Voz (TTS) -->
+                <div class="row g-4">
                 <div class="col-12 col-lg-6">
                   <div class="border rounded-4 p-3 bg-body-tertiary">
-                    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
                       <div>
-                        <div class="fw-bold">Reprodução do Vídeo</div>
-                        <div class="text-body-secondary small">Pausar ou reproduzir o vídeo na TV.</div>
+                        <div class="fw-bold">Anúncio de Voz (TTS)</div>
+                        <div class="text-body-secondary small">Anuncia a senha em voz sintetizada após a campainha.</div>
                       </div>
                       <div class="d-flex gap-2">
-                        <button id="btnVideoPlay" class="btn-action btn-toggle-on" style="min-width: 110px;">Reproduzir</button>
-                        <button id="btnVideoPause" class="btn-action btn-toggle-off" style="min-width: 110px;">Pausar</button>
+                        <button type="button" id="btnTtsToggle" class="btn-action btn-toggle-on tv-toggle-btn" style="min-width: 110px;">Ativado</button>
                       </div>
                     </div>
-                    <div class="alert alert-soft small mb-0 mt-3">
-                      Use <b>Pausar</b> durante comunicados importantes ou quando não houver conteúdo apropriado para o momento.
+                    <div class="d-flex gap-2 align-items-center flex-wrap mb-3">
+                      <select id="selectTtsVoice" class="form-select form-select-sm" style="flex: 1; min-width: 140px;">
+                        <option value="pf_dora">Dora (Feminina)</option>
+                        <option value="pm_alex">Alex (Masculino)</option>
+                        <option value="pm_santa">Santa (Masculino)</option>
+                      </select>
+                      <button type="button" id="btnTestTtsVoice" class="btn btn-sm btn-outline-primary">Testar</button>
+                    </div>
+                    <div class="mb-2">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label for="sliderTtsSpeed" class="form-label small mb-0">Velocidade</label>
+                        <span id="labelTtsSpeed" class="text-body-secondary small">0.85×</span>
+                      </div>
+                      <input type="range" class="form-range" id="sliderTtsSpeed"
+                        min="0.25" max="2.0" step="0.05" value="0.85">
+                    </div>
+                    <div class="mb-3">
+                      <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label for="sliderTtsVolume" class="form-label small mb-0">Volume</label>
+                        <span id="labelTtsVolume" class="text-body-secondary small">1.0×</span>
+                      </div>
+                      <input type="range" class="form-range" id="sliderTtsVolume"
+                        min="0.5" max="2.0" step="0.1" value="1.0">
+                    </div>
+                    <div class="alert alert-soft small mb-0">
+                      Clique em Testar para ouvir: "Atenção! Senha A zero zero um. Dirija-se ao Guichê cinco."
                     </div>
                   </div>
                 </div>
+                <!-- Card: Logo do Tenant (Branding) -->
+                <div class="col-12 col-lg-6">
+                  <div class="border rounded-4 p-3 bg-body-tertiary h-100">
+                    <div class="fw-bold">Logo do Tenant</div>
+                    <div class="text-body-secondary small mb-2">PNG/JPG/SVG. A TV carrega no próximo refresh.</div>
+                    <div class="mb-2">
+                      <input id="logoFile" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml" class="form-control form-control-sm scart-input" />
+                    </div>
+                    <div class="d-flex gap-2 mb-3">
+                      <button id="btnUploadLogo" class="btn btn-sm btn-scart-primary flex-fill">Salvar logo</button>
+                      <button id="btnClearLogo" class="btn btn-sm btn-scart-secondary flex-fill">Remover</button>
+                    </div>
+                    <div class="small text-body-secondary mb-1">Preview</div>
+                    <div class="preview-box border rounded p-2 bg-dark bg-opacity-25" style="min-height: 60px;">
+                      <img id="logoPreview" alt="logo preview" style="max-height: 70px; max-width: 100%; display: none" />
+                      <div id="logoPreviewEmpty" class="text-body-secondary small">Sem logo.</div>
+                    </div>
+                    <div class="alert alert-soft small mb-0 mt-2">SVG/PNG com fundo transparente.</div>
+                  </div>
+                </div>
+                </div>
+
               </div>
             </div>
           </div>
@@ -1415,60 +1450,93 @@
       }
 
       // TV Settings state
-      let currentTVSettings = { tv_theme: "dark", tv_audio_enabled: true, tv_video_muted: true, tv_video_paused: false };
+      let currentTVSettings = { tv_theme: "dark", tv_audio_enabled: true, tv_call_sound: "notification-1.mp3", tv_video_muted: true, tv_video_paused: false, tts_enabled: false, tts_voice: "pf_dora", tts_speed: 0.85, tts_volume: 1.0 };
 
       async function refreshTVSettings() {
         try {
-          const data = await api("/tenant/tv-settings", { headers: authHeaders() });
+          const [data, soundsRes] = await Promise.all([
+            api("/tenant/tv-settings", { headers: authHeaders() }),
+            api("/api/sounds"),
+          ]);
           currentTVSettings = data;
+          const sounds = (soundsRes && soundsRes.sounds) || ["notification-1.mp3"];
+          const sel = document.getElementById("selectCallSound");
+          if (sel) {
+            sel.innerHTML = sounds.map((f) => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`).join("");
+          }
           updateTVSettingsUI();
         } catch (e) {
           console.warn("Erro ao carregar configurações TV:", e);
         }
       }
 
-      function setToggleState(btnOn, btnOff, isOn) {
-        if (isOn) {
-          btnOn.classList.remove("btn-toggle-off");
-          btnOn.classList.add("btn-toggle-on");
-          btnOff.classList.remove("btn-toggle-on");
-          btnOff.classList.add("btn-toggle-off");
-        } else {
-          btnOff.classList.remove("btn-toggle-off");
-          btnOff.classList.add("btn-toggle-on");
-          btnOn.classList.remove("btn-toggle-on");
-          btnOn.classList.add("btn-toggle-off");
-        }
+      function setSingleToggle(btn, isOn, labelOn, labelOff) {
+        if (!btn) return;
+        btn.textContent = isOn ? labelOn : labelOff;
+        btn.classList.toggle("btn-toggle-on", isOn);
+        btn.classList.toggle("btn-toggle-off", !isOn);
       }
 
       function updateTVSettingsUI() {
-        // Tema
-        setToggleState(
-          document.getElementById("btnThemeDark"),
-          document.getElementById("btnThemeLight"),
-          currentTVSettings.tv_theme === "dark"
+        // Tema (Dark / Light)
+        setSingleToggle(
+          document.getElementById("btnThemeToggle"),
+          currentTVSettings.tv_theme === "dark",
+          "Dark",
+          "Light"
         );
 
-        // Áudio de chamada
-        setToggleState(
-          document.getElementById("btnAudioOn"),
-          document.getElementById("btnAudioOff"),
-          currentTVSettings.tv_audio_enabled
+        // Áudio de chamada (Ativado / Desativado)
+        setSingleToggle(
+          document.getElementById("btnAudioToggle"),
+          currentTVSettings.tv_audio_enabled,
+          "Ativado",
+          "Desativado"
         );
 
-        // Áudio do vídeo (invertido: muted=true significa som OFF)
-        setToggleState(
-          document.getElementById("btnVideoAudioOn"),
-          document.getElementById("btnVideoAudioOff"),
-          !currentTVSettings.tv_video_muted
+        // Som da chamada (dropdown)
+        const sel = document.getElementById("selectCallSound");
+        if (sel) {
+          const v = currentTVSettings.tv_call_sound || "notification-1.mp3";
+          if (Array.from(sel.options).some((o) => o.value === v)) sel.value = v;
+          else sel.selectedIndex = 0;
+        }
+
+        // Áudio do vídeo (Ativado / Mutado) — muted=true significa som OFF
+        setSingleToggle(
+          document.getElementById("btnVideoAudioToggle"),
+          !currentTVSettings.tv_video_muted,
+          "Ativado",
+          "Mutado"
         );
 
-        // Reprodução do vídeo (paused=true significa pausado)
-        setToggleState(
-          document.getElementById("btnVideoPlay"),
-          document.getElementById("btnVideoPause"),
-          !currentTVSettings.tv_video_paused
+        // Reprodução do vídeo (Reproduzir / Pausar)
+        setSingleToggle(
+          document.getElementById("btnVideoPlaybackToggle"),
+          !currentTVSettings.tv_video_paused,
+          "Reproduzir",
+          "Pausar"
         );
+
+        // TTS (Ativado / Desativado)
+        setSingleToggle(
+          document.getElementById("btnTtsToggle"),
+          currentTVSettings.tts_enabled,
+          "Ativado",
+          "Desativado"
+        );
+        const selVoice = document.getElementById("selectTtsVoice");
+        if (selVoice) selVoice.value = currentTVSettings.tts_voice || "pf_dora";
+        const sliderSpeed = document.getElementById("sliderTtsSpeed");
+        const sliderVolume = document.getElementById("sliderTtsVolume");
+        if (sliderSpeed) {
+          sliderSpeed.value = currentTVSettings.tts_speed ?? 0.85;
+          document.getElementById("labelTtsSpeed").textContent = `${Number(sliderSpeed.value).toFixed(2)}×`;
+        }
+        if (sliderVolume) {
+          sliderVolume.value = currentTVSettings.tts_volume ?? 1.0;
+          document.getElementById("labelTtsVolume").textContent = `${Number(sliderVolume.value).toFixed(1)}×`;
+        }
       }
 
       async function saveTVSettings() {
@@ -2049,46 +2117,97 @@
 
       // TV Settings buttons
       document.getElementById("btnRefreshTVSettings").addEventListener("click", refreshTVSettings);
-      document.getElementById("btnThemeDark").addEventListener("click", async () => {
-        currentTVSettings.tv_theme = "dark";
+      document.getElementById("btnThemeToggle").addEventListener("click", async () => {
+        currentTVSettings.tv_theme = currentTVSettings.tv_theme === "dark" ? "light" : "dark";
         updateTVSettingsUI();
         await saveTVSettings();
       });
-      document.getElementById("btnThemeLight").addEventListener("click", async () => {
-        currentTVSettings.tv_theme = "light";
+      document.getElementById("btnAudioToggle").addEventListener("click", async () => {
+        currentTVSettings.tv_audio_enabled = !currentTVSettings.tv_audio_enabled;
         updateTVSettingsUI();
         await saveTVSettings();
       });
-      document.getElementById("btnAudioOn").addEventListener("click", async () => {
-        currentTVSettings.tv_audio_enabled = true;
+      const selectCallSound = document.getElementById("selectCallSound");
+      if (selectCallSound) {
+        selectCallSound.addEventListener("change", async () => {
+          currentTVSettings.tv_call_sound = selectCallSound.value;
+          await saveTVSettings();
+        });
+      }
+      const btnTestCallSound = document.getElementById("btnTestCallSound");
+      if (btnTestCallSound && selectCallSound) {
+        btnTestCallSound.addEventListener("click", () => {
+          const filename = selectCallSound.value;
+          if (!filename) return;
+          const url = `${EDGE_BASE}/api/sounds/${encodeURIComponent(filename)}`;
+          const audio = new Audio(url);
+          btnTestCallSound.disabled = true;
+          btnTestCallSound.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+          const done = () => { btnTestCallSound.disabled = false; btnTestCallSound.textContent = "Testar"; };
+          audio.onended = done;
+          audio.onerror = done;
+          audio.play().catch(done);
+        });
+      }
+      document.getElementById("btnVideoAudioToggle").addEventListener("click", async () => {
+        currentTVSettings.tv_video_muted = !currentTVSettings.tv_video_muted;
         updateTVSettingsUI();
         await saveTVSettings();
       });
-      document.getElementById("btnAudioOff").addEventListener("click", async () => {
-        currentTVSettings.tv_audio_enabled = false;
+      document.getElementById("btnVideoPlaybackToggle").addEventListener("click", async () => {
+        currentTVSettings.tv_video_paused = !currentTVSettings.tv_video_paused;
         updateTVSettingsUI();
         await saveTVSettings();
       });
-      document.getElementById("btnVideoAudioOn").addEventListener("click", async () => {
-        currentTVSettings.tv_video_muted = false;
+      document.getElementById("btnTtsToggle").addEventListener("click", async () => {
+        currentTVSettings.tts_enabled = !currentTVSettings.tts_enabled;
         updateTVSettingsUI();
         await saveTVSettings();
       });
-      document.getElementById("btnVideoAudioOff").addEventListener("click", async () => {
-        currentTVSettings.tv_video_muted = true;
-        updateTVSettingsUI();
-        await saveTVSettings();
-      });
-      document.getElementById("btnVideoPlay").addEventListener("click", async () => {
-        currentTVSettings.tv_video_paused = false;
-        updateTVSettingsUI();
-        await saveTVSettings();
-      });
-      document.getElementById("btnVideoPause").addEventListener("click", async () => {
-        currentTVSettings.tv_video_paused = true;
-        updateTVSettingsUI();
-        await saveTVSettings();
-      });
+      const selectTtsVoice = document.getElementById("selectTtsVoice");
+      if (selectTtsVoice) {
+        selectTtsVoice.addEventListener("change", async () => {
+          currentTVSettings.tts_voice = selectTtsVoice.value;
+          await saveTVSettings();
+        });
+      }
+      const sliderTtsSpeed = document.getElementById("sliderTtsSpeed");
+      if (sliderTtsSpeed) {
+        sliderTtsSpeed.addEventListener("input", () => {
+          document.getElementById("labelTtsSpeed").textContent = `${Number(sliderTtsSpeed.value).toFixed(2)}×`;
+        });
+        sliderTtsSpeed.addEventListener("change", async () => {
+          currentTVSettings.tts_speed = parseFloat(sliderTtsSpeed.value);
+          await saveTVSettings();
+        });
+      }
+      const sliderTtsVolume = document.getElementById("sliderTtsVolume");
+      if (sliderTtsVolume) {
+        sliderTtsVolume.addEventListener("input", () => {
+          document.getElementById("labelTtsVolume").textContent = `${Number(sliderTtsVolume.value).toFixed(1)}×`;
+        });
+        sliderTtsVolume.addEventListener("change", async () => {
+          currentTVSettings.tts_volume = parseFloat(sliderTtsVolume.value);
+          await saveTVSettings();
+        });
+      }
+      const btnTestTtsVoice = document.getElementById("btnTestTtsVoice");
+      if (btnTestTtsVoice) {
+        btnTestTtsVoice.addEventListener("click", () => {
+          const voice = selectTtsVoice?.value || "pf_dora";
+          const speed = sliderTtsSpeed?.value || 0.85;
+          const volume = sliderTtsVolume?.value || 1.0;
+          const url = `${EDGE_BASE}/api/tts/call?ticket_code=A001&counter_name=Guich%C3%AA+cinco` +
+            `&voice=${encodeURIComponent(voice)}&speed=${speed}&volume=${volume}`;
+          const audio = new Audio(url);
+          btnTestTtsVoice.disabled = true;
+          btnTestTtsVoice.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+          const done = () => { btnTestTtsVoice.disabled = false; btnTestTtsVoice.textContent = "Testar"; };
+          audio.onended = done;
+          audio.onerror = done;
+          audio.play().catch(done);
+        });
+      }
 
       // Branding upload (logo)
       function fileToDataUrl(file) {

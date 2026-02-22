@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chama Já — Painel principal</title>
+  <link rel="icon" href="data:," />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="dashboard.css" />
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <h1 class="logo">Chama Já</h1>
+      <p class="tagline">Painel principal — acesse as interfaces</p>
+      <button type="button" class="theme-toggle" id="themeToggle" aria-label="Alternar tema">
+        <span class="theme-icon sun" aria-hidden="true">☀️</span>
+        <span class="theme-icon moon" aria-hidden="true">🌙</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="cards" id="cards"></div>
+  </main>
+
+  <footer class="footer">
+    <p>Clique em um painel para abrir em nova aba</p>
+  </footer>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

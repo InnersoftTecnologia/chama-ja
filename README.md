@@ -4,6 +4,10 @@ Sistema completo de gerenciamento de senhas e chamadas para atendimento, com pai
 
 **Repositório:** https://github.com/InnersoftTecnologia/chama-ja
 
+## Página principal (dashboard)
+
+**http://localhost:7077** — Painel com links para abrir cada interface em nova aba (TV, Operador, Admin, Totem, etc.), com tema dark/light.
+
 ## Instalação rápida
 
 ```bash
@@ -35,6 +39,7 @@ A pasta `docs/` não é versionada (está no `.gitignore`).
 
 | Porta | Serviço | Descrição |
 |-------|---------|-----------|
+| 7077 | **Dashboard** | Página principal — links para todas as interfaces |
 | 7071 | Edge API | Backend FastAPI |
 | 7072 | Test UI | Interface de teste (legado) |
 | 7073 | TV | Monitor/Painel de chamadas |
@@ -52,7 +57,8 @@ A pasta `docs/` não é versionada (está no `.gitignore`).
 - **Serviços**: CRUD de serviços com prioridade normal/preferencial
 - **Painel do Chamador**: Configurações da TV
   - Tema Dark/Light
-  - Áudio de chamada (beep)
+  - Áudio de chamada (beep/mp3 configurável)
+  - **Anúncio de voz TTS** (Kokoro) — anuncia a senha em português após a campainha; voz configurável (Dora, Alex, Santa), com sliders de velocidade (0.25×–2.0×) e volume (0.5×–2.0×); botão "Testar" reproduz amostra no navegador
   - Controle remoto do vídeo YouTube (mute/play/pause)
   - Avisos do rodapé (ticker)
   - Playlist de vídeos e slides (CRUD com metadados)
@@ -68,6 +74,7 @@ A pasta `docs/` não é versionada (está no `.gitignore`).
 - Ticker de avisos no rodapé
 - Tema dark/light configurável remotamente
 - Áudio e vídeo controláveis remotamente
+- **Anúncio de voz TTS**: ao chamar uma senha, toca a campainha e em seguida anuncia em voz sintetizada (ex.: "Atenção! Senha A zero três quatro. Dirija-se ao Guichê cinco.") via Kokoro TTS (porta 8880), com cache em disco
 
 ### Operador (http://localhost:7074)
 - Login com JWT
@@ -101,7 +108,7 @@ mysql -u mysql -pmysql localhost
 ### 1) Instalar deps
 
 ```bash
-cd /home/cbruno/projetos/chamador
+cd /home/cbruno/projetos/chama-ja
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -132,17 +139,17 @@ curl -X POST http://localhost:7071/admin/seed -H 'Authorization: Bearer dev-edge
 Em dois terminais:
 
 ```bash
-python3 -m http.server 7070 --directory /home/cbruno/projetos/chamador/frontend/tv
+python3 -m http.server 7070 --directory /home/cbruno/projetos/chama-ja/frontend/tv
 ```
 
 Se a 7070 estiver ocupada no seu host, use a 7073:
 
 ```bash
-python3 -m http.server 7073 --directory /home/cbruno/projetos/chamador/frontend/tv
+python3 -m http.server 7073 --directory /home/cbruno/projetos/chama-ja/frontend/tv
 ```
 
 ```bash
-python3 -m http.server 7072 --directory /home/cbruno/projetos/chamador/frontend/operator-test
+python3 -m http.server 7072 --directory /home/cbruno/projetos/chama-ja/frontend/operator-test
 ```
 
 Abra:
@@ -156,8 +163,39 @@ Se estiver usando o `gerenciar.sh`, ele já sobe também:
 - Admin: `http://localhost:7075/`
 - Totem: `http://localhost:7076/`
 
-## Notas do MVP
+## Dependências externas
+
+- **Kokoro TTS** (porta 8880) — microserviço de síntese de voz em português BR rodando via Docker. Se offline, o sistema opera normalmente apenas com a campainha (falha silenciosa). O diretório do Kokoro pode estar em **qualquer caminho** do servidor.
+
+### Gerenciando o Kokoro
+
+```bash
+# Subir o container Kokoro (padrão: <projeto>/kokoro/docker-compose.yml)
+./gerenciar.sh kokoro start
+
+# Para subir de outro caminho:
+export KOKORO_DIR=/opt/kokoro
+./gerenciar.sh kokoro start
+
+# Parar
+./gerenciar.sh kokoro stop
+
+# Verificar status
+./gerenciar.sh kokoro status
+```
+
+O status do Kokoro também aparece em `./gerenciar.sh status` e na verificação pós-`start`.
+
+### Variáveis de ambiente do Kokoro
+
+| Variável | Padrão | Descrição |
+|----------|--------|-----------|
+| `KOKORO_DIR` | `<projeto>/kokoro` | Caminho do diretório com o `docker-compose.yml` |
+| `KOKORO_PORT` | `8880` | Porta em que o Kokoro escuta |
+| `KOKORO_TTS_URL` | `http://localhost:8880/v1/audio/speech` | URL completa usada pelo backend |
+
+## Notas
 
 - SSE usa `?token=...` porque `EventSource` não consegue enviar header Authorization.
-- Áudio: por enquanto é **bip** (WebAudio). Depois evolui para voz (Kokoro/API ou composição por áudios).
+- Cache de áudios TTS em `.run/tts_cache/` (MP3 por hash MD5 de texto+voz+speed+volume). Limpar com `./scripts/testar_voz.sh --limpar-cache` ou `rm -f .run/tts_cache/*.mp3`.
 

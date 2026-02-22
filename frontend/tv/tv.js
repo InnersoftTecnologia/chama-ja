@@ -13,6 +13,11 @@ const state = {
   overlayTimer: null,
   seenCallIds: new Set(), // Track calls that existed on page load to avoid showing overlay
   audioEnabled: true, // TV audio setting from tenant config
+  callSoundFile: "notification-1.mp3", // Som da chamada (arquivo em sounds/), configurável no admin
+  ttsEnabled: false, // Anúncio de voz TTS após a campainha
+  ttsVoice: "pf_dora", // Voz do TTS (pf_dora, pm_alex, pm_santa)
+  ttsSpeed: 0.85, // Velocidade da fala (0.25–4.0)
+  ttsVolume: 1.0, // Volume multiplicador (0.1–4.0)
   slideTimer: null, // Timer for slide transitions
   mediaFilter: null, // null = "all", "videos" ou "slides" - carregado do backend
 };
@@ -326,6 +331,13 @@ function applyTenantBranding(tenant) {
   applyTVTheme(tenant.tv_theme);
   // Store audio setting
   state.audioEnabled = tenant.tv_audio_enabled !== false && tenant.tv_audio_enabled !== 0;
+  // Som da chamada (arquivo configurável no admin)
+  state.callSoundFile = (tenant.tv_call_sound || "notification-1.mp3").trim() || "notification-1.mp3";
+  // TTS: anúncio de voz após a campainha
+  state.ttsEnabled = tenant.tts_enabled === true || tenant.tts_enabled === 1;
+  state.ttsVoice = (tenant.tts_voice || "pf_dora").trim() || "pf_dora";
+  state.ttsSpeed = parseFloat(tenant.tts_speed) || 0.85;
+  state.ttsVolume = parseFloat(tenant.tts_volume) || 1.0;
   // Apply video controls
   applyVideoControls(tenant);
   
@@ -400,31 +412,57 @@ function openOverlay(call) {
 }
 
 async function playCallAudio(call) {
-  // Check if audio is enabled
   if (state.audioEnabled === false) {
     return;
   }
-  // MVP: beep using oscillator (works offline, no assets).
-  // Also used to gate YouTube audio: pause/mute while beep is playing.
   state.isPlayingCallAudio = true;
   try {
     pauseYouTubeForCall();
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type = "sine";
-    o.frequency.value = 880;
-    g.gain.value = 0.08;
-    o.connect(g);
-    g.connect(ctx.destination);
-    o.start();
-
-    await new Promise((r) => setTimeout(r, 800));
-    o.frequency.value = 660;
-    await new Promise((r) => setTimeout(r, 500));
-
-    o.stop();
-    await ctx.close();
+    const soundFile = state.callSoundFile || "notification-1.mp3";
+    const soundUrl = `${EDGE_BASE}/api/sounds/${encodeURIComponent(soundFile)}`;
+    try {
+      const audio = new Audio(soundUrl);
+      await new Promise((resolve, reject) => {
+        audio.onended = () => resolve();
+        audio.onerror = () => reject(audio.error);
+        audio.play().catch(reject);
+      });
+    } catch (e) {
+      // Fallback: beep com oscillator (offline ou arquivo indisponível)
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "sine";
+      o.frequency.value = 880;
+      g.gain.value = 0.08;
+      o.connect(g);
+      g.connect(ctx.destination);
+      o.start();
+      await new Promise((r) => setTimeout(r, 800));
+      o.frequency.value = 660;
+      await new Promise((r) => setTimeout(r, 500));
+      o.stop();
+      await ctx.close();
+    }
+    // Após a campainha, anunciar em voz TTS (se habilitado)
+    if (state.ttsEnabled && call?.ticket_code && call?.counter_name) {
+      try {
+        const ttsUrl = `${EDGE_BASE}/api/tts/call?` +
+          `ticket_code=${encodeURIComponent(call.ticket_code)}` +
+          `&counter_name=${encodeURIComponent(call.counter_name)}` +
+          `&voice=${encodeURIComponent(state.ttsVoice || "pf_dora")}` +
+          `&speed=${state.ttsSpeed || 0.85}` +
+          `&volume=${state.ttsVolume || 1.0}`;
+        const ttsAudio = new Audio(ttsUrl);
+        await new Promise((resolve) => {
+          ttsAudio.onended = resolve;
+          ttsAudio.onerror = resolve; // falha silenciosa — não quebra o fluxo
+          ttsAudio.play().catch(resolve);
+        });
+      } catch (_) {
+        // Falha silenciosa
+      }
+    }
   } catch (e) {
     // ignore
   } finally {

@@ -1,5 +1,7 @@
+import hashlib
 import json
 import os
+import socket
 import time
 import uuid
 from contextlib import contextmanager
@@ -181,6 +183,16 @@ app.add_middleware(
 )
 
 
+def _get_lan_ip() -> Optional[str]:
+    """IP da interface usada para a rota padrão (útil para QR no dashboard)."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            return s.getsockname()[0]
+    except Exception:
+        return None
+
+
 @app.get("/health")
 def health():
     with db_conn() as conn:
@@ -188,6 +200,13 @@ def health():
         cur.execute("SELECT 1")
         cur.fetchone()
     return {"ok": True, "time": utc_now().isoformat()}
+
+
+@app.get("/api/host")
+def api_host():
+    """Retorna o host/IP acessível na rede (para QR do Totem etc). Usar PUBLIC_HOST ou EDGE_PUBLIC_HOST se definido."""
+    host = os.getenv("PUBLIC_HOST") or os.getenv("EDGE_PUBLIC_HOST") or _get_lan_ip()
+    return {"host": host or ""}
 
 
 @app.post("/admin/init-db")
@@ -390,7 +409,7 @@ def fetch_state() -> Dict[str, Any]:
         cur = conn.cursor(dictionary=True)
         cur.execute(
             """
-            SELECT cpf_cnpj, nome_razao_social, nome_fantasia, situacao, logo_base64, tv_theme, tv_audio_enabled, tv_video_muted, tv_video_paused, admin_playlist_filter
+            SELECT cpf_cnpj, nome_razao_social, nome_fantasia, situacao, logo_base64, tv_theme, tv_audio_enabled, tv_call_sound, tv_video_muted, tv_video_paused, admin_playlist_filter
             FROM tenants
             WHERE cpf_cnpj = %s
             """,
@@ -1125,6 +1144,109 @@ def generate_thumbnail(image_path: str, output_path: str, size: Tuple[int, int] 
         raise Exception(f"Error generating thumbnail: {str(e)}")
 
 
+def _sounds_dir() -> str:
+    """Directory containing call sound files (project root / sounds)."""
+    base = os.getcwd()
+    return os.path.join(base, "sounds")
+
+
+@app.get("/api/sounds")
+def list_sounds():
+    """List available sound filenames for call alert (MP3/WAV in sounds/)."""
+    import glob
+    sounds_dir = _sounds_dir()
+    if not os.path.isdir(sounds_dir):
+        return {"sounds": ["notification-1.mp3"]}
+    names = []
+    for ext in ("*.mp3", "*.wav"):
+        for path in glob.glob(os.path.join(sounds_dir, ext)):
+            names.append(os.path.basename(path))
+    names.sort()
+    return {"sounds": names if names else ["notification-1.mp3"]}
+
+
+@app.get("/api/sounds/{filename}")
+def serve_sound(filename: str):
+    """Serve a sound file from the sounds/ directory (for TV call alert)."""
+    import mimetypes
+    if not all(c.isalnum() or c in ("-", "_", ".") for c in filename):
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    sounds_dir = _sounds_dir()
+    file_path = os.path.join(sounds_dir, filename)
+    if not os.path.abspath(file_path).startswith(os.path.abspath(sounds_dir)):
+        raise HTTPException(status_code=403, detail="Access denied")
+    if not os.path.isfile(file_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    mime_type, _ = mimetypes.guess_type(file_path)
+    if not mime_type:
+        mime_type = "audio/mpeg"
+    with open(file_path, "rb") as f:
+        body = f.read()
+    return StreamingResponse(iter([body]), media_type=mime_type)
+
+
+_TTS_DIGIT_WORDS = {
+    '0': 'zero', '1': 'um', '2': 'dois', '3': 'três', '4': 'quatro',
+    '5': 'cinco', '6': 'seis', '7': 'sete', '8': 'oito', '9': 'nove',
+}
+_TTS_KOKORO_URL = os.environ.get("KOKORO_TTS_URL", "http://localhost:8880/v1/audio/speech")
+_TTS_VALID_VOICES = {"pf_dora", "pm_alex", "pm_santa"}
+
+
+def _tts_cache_dir() -> str:
+    return os.path.join(os.getcwd(), ".run", "tts_cache")
+
+
+def _format_call_text(ticket_code: str, counter_name: str) -> str:
+    parts = []
+    for ch in (ticket_code or "").upper():
+        if ch.isdigit():
+            parts.append(_TTS_DIGIT_WORDS[ch])
+        elif ch.isalpha():
+            parts.append(ch)
+    ticket_text = " ".join(parts) if parts else ticket_code
+    return f"Atenção! Senha {ticket_text}. Dirija-se ao {counter_name}."
+
+
+@app.get("/api/tts/call")
+def get_tts_call(ticket_code: str, counter_name: str, voice: str = "pf_dora",
+                 speed: float = 0.85, volume: float = 1.0):
+    """Gera (e cacheia) MP3 com anúncio de voz via Kokoro TTS."""
+    if voice not in _TTS_VALID_VOICES:
+        voice = "pf_dora"
+    speed = max(0.25, min(4.0, speed))
+    volume = max(0.1, min(4.0, volume))
+    cache_dir = _tts_cache_dir()
+    os.makedirs(cache_dir, exist_ok=True)
+    text = _format_call_text(ticket_code, counter_name)
+    cache_key = hashlib.md5(f"{text}|{voice}|{speed:.2f}|{volume:.2f}".encode()).hexdigest()
+    cache_file = os.path.join(cache_dir, f"{cache_key}.mp3")
+    if not os.path.isfile(cache_file):
+        payload = json.dumps({
+            "model": "kokoro",
+            "input": text,
+            "voice": voice,
+            "response_format": "mp3",
+            "speed": speed,
+            "volume_multiplier": volume,
+        }).encode()
+        try:
+            req = Request(_TTS_KOKORO_URL, data=payload, headers={"Content-Type": "application/json"})
+            with urlopen(req, timeout=15) as resp:
+                audio_bytes = resp.read()
+        except Exception as e:
+            raise HTTPException(status_code=503, detail=f"Kokoro TTS indisponível: {e}")
+        with open(cache_file, "wb") as f:
+            f.write(audio_bytes)
+    with open(cache_file, "rb") as f:
+        body = f.read()
+    return StreamingResponse(
+        iter([body]),
+        media_type="audio/mpeg",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
 @app.get("/api/slides/{filename}")
 def serve_slide_image(filename: str):
     """Serve slide images from .run/slides/ directory"""
@@ -1637,7 +1759,7 @@ def get_tenant_tv_settings(authorization: Optional[str] = Header(default=None)):
     with db_conn() as conn:
         cur = conn.cursor(dictionary=True)
         cur.execute(
-            "SELECT tv_theme, tv_audio_enabled, tv_video_muted, tv_video_paused FROM tenants WHERE cpf_cnpj = %s",
+            "SELECT tv_theme, tv_audio_enabled, tv_call_sound, tv_video_muted, tv_video_paused, tts_enabled, tts_voice, tts_speed, tts_volume FROM tenants WHERE cpf_cnpj = %s",
             (tenant_cpf_cnpj,),
         )
         row = cur.fetchone()
@@ -1646,8 +1768,13 @@ def get_tenant_tv_settings(authorization: Optional[str] = Header(default=None)):
         return {
             "tv_theme": row.get("tv_theme") or "dark",
             "tv_audio_enabled": bool(row.get("tv_audio_enabled", 1)),
+            "tv_call_sound": (row.get("tv_call_sound") or "").strip() or "notification-1.mp3",
             "tv_video_muted": bool(row.get("tv_video_muted", 1)),
             "tv_video_paused": bool(row.get("tv_video_paused", 0)),
+            "tts_enabled": bool(row.get("tts_enabled", 0)),
+            "tts_voice": (row.get("tts_voice") or "pf_dora").strip() or "pf_dora",
+            "tts_speed": float(row.get("tts_speed") or 0.85),
+            "tts_volume": float(row.get("tts_volume") or 1.0),
         }
 
 
@@ -1659,8 +1786,15 @@ def set_tenant_tv_settings(payload_in: Dict[str, Any], authorization: Optional[s
 
     tv_theme = (payload_in.get("tv_theme") or "dark").strip()
     tv_audio_enabled = payload_in.get("tv_audio_enabled")
+    tv_call_sound = (payload_in.get("tv_call_sound") or "notification-1.mp3").strip() or "notification-1.mp3"
     tv_video_muted = payload_in.get("tv_video_muted")
     tv_video_paused = payload_in.get("tv_video_paused")
+    tts_enabled = payload_in.get("tts_enabled", False)
+    tts_voice = (payload_in.get("tts_voice") or "pf_dora").strip()
+    tts_speed = float(payload_in.get("tts_speed") or 0.85)
+    tts_volume = float(payload_in.get("tts_volume") or 1.0)
+    tts_speed = max(0.25, min(4.0, tts_speed))
+    tts_volume = max(0.1, min(4.0, tts_volume))
 
     if tv_theme not in ("dark", "light"):
         raise HTTPException(status_code=400, detail="tv_theme must be 'dark' or 'light'")
@@ -1670,14 +1804,21 @@ def set_tenant_tv_settings(payload_in: Dict[str, Any], authorization: Optional[s
         raise HTTPException(status_code=400, detail="tv_video_muted is required")
     if tv_video_paused is None:
         raise HTTPException(status_code=400, detail="tv_video_paused is required")
+    # Sanitize filename: only alphanumeric, dash, underscore, dot
+    if not all(c.isalnum() or c in ("-", "_", ".") for c in tv_call_sound):
+        tv_call_sound = "notification-1.mp3"
+    if tts_voice not in _TTS_VALID_VOICES:
+        tts_voice = "pf_dora"
 
     with db_conn() as conn:
         cur = conn.cursor()
         cur.execute(
             """UPDATE tenants
-               SET tv_theme = %s, tv_audio_enabled = %s, tv_video_muted = %s, tv_video_paused = %s
+               SET tv_theme = %s, tv_audio_enabled = %s, tv_call_sound = %s, tv_video_muted = %s, tv_video_paused = %s,
+                   tts_enabled = %s, tts_voice = %s, tts_speed = %s, tts_volume = %s
                WHERE cpf_cnpj = %s""",
-            (tv_theme, 1 if tv_audio_enabled else 0, 1 if tv_video_muted else 0, 1 if tv_video_paused else 0, tenant_cpf_cnpj),
+            (tv_theme, 1 if tv_audio_enabled else 0, tv_call_sound, 1 if tv_video_muted else 0, 1 if tv_video_paused else 0,
+             1 if tts_enabled else 0, tts_voice, tts_speed, tts_volume, tenant_cpf_cnpj),
         )
     return {"ok": True}
 

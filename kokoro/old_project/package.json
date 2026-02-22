@@ -1,0 +1,42 @@
+{
+    "name": "kokoro-tts-demo",
+    "version": "1.0.0",
+    "description": "Kokoro TTS - Sistema de Síntese de Voz em Português Brasileiro (Python + PHP + Node.js)",
+    "main": "kokoro_tts_server.js",
+    "scripts": {
+      "start": "node kokoro_tts_server.js",
+      "dev": "DEBUG=true node kokoro_tts_server.js",
+      "test": "node -e \"require('axios').get('http://localhost:7000/health').then(r => console.log('✅ Servidor respondendo')).catch(e => console.log('❌ Servidor não respondendo'))\"",
+      "clean": "rm -rf audio_cache node_modules"
+    },
+    "keywords": [
+      "kokoro",
+      "tts",
+      "text-to-speech",
+      "português",
+      "síntese de voz",
+      "api",
+      "rest",
+      "express"
+    ],
+    "author": "Claude (IA)",
+    "license": "MIT",
+    "dependencies": {
+      "express": "^4.18.2",
+      "axios": "^1.6.0",
+      "cors": "^2.8.5",
+      "dotenv": "^16.3.1",
+      "node-cache": "^5.1.2"
+    },
+    "devDependencies": {
+      "nodemon": "^3.0.1"
+    },
+    "engines": {
+      "node": ">=14.0.0",
+      "npm": ">=7.0.0"
+    },
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/hexgrad/kokoro"
+    }
+  }

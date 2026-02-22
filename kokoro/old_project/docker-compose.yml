@@ -1,0 +1,193 @@
+version: '3.8'
+
+name: kokoro-demo
+
+services:
+  # ==========================================================================
+  # Kokoro TTS - Engine de Síntese de Voz
+  # ==========================================================================
+  kokoro-api:
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:latest
+    container_name: kokoro-tts
+    ports:
+      - "8880:8880"
+    environment:
+      # Configurações do Kokoro
+      - TARGET_MIN_TOKENS=175
+      - TARGET_MAX_TOKENS=250
+      - ABSOLUTE_MAX_TOKENS=450
+      - LOG_LEVEL=info
+    volumes:
+      # Persistir cache de modelos
+      - kokoro-models:/app/models
+      # Diretório de saída
+      - ./audio_output:/app/outputs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8880/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - kokoro-network
+    labels:
+      - "com.example.description=Kokoro Text-to-Speech Engine"
+
+  # ==========================================================================
+  # Node.js Server - API REST e gerenciamento
+  # ==========================================================================
+  node-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+    container_name: kokoro-node-api
+    ports:
+      - "7000:7000"
+    environment:
+      - NODE_ENV=production
+      - KOKORO_URL=http://kokoro-api:8880
+      - DEBUG=false
+      - PORT=7000
+      - CACHE_DIR=/app/cache
+      - TIMEOUT=30000
+    volumes:
+      # Cache compartilhado
+      - node-cache:/app/cache
+      # Áudio gerado
+      - ./audio_output:/app/audio_output
+    depends_on:
+      kokoro-api:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - kokoro-network
+    labels:
+      - "com.example.description=Kokoro Node.js REST API"
+
+  # ==========================================================================
+  # PHP Server - Processamento backend
+  # ==========================================================================
+  php-fpm:
+    image: php:8.2-fpm-alpine
+    container_name: kokoro-php-fpm
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - ./audio_output:/app/audio_output
+    environment:
+      - PHP_MEMORY_LIMIT=256M
+      - PHP_MAX_EXECUTION_TIME=60
+    networks:
+      - kokoro-network
+    depends_on:
+      - kokoro-api
+    restart: unless-stopped
+
+  # ==========================================================================
+  # Nginx - Proxy reverso e servidor web
+  # ==========================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: kokoro-nginx
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      # Configuração nginx
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Diretório web
+      - ./public:/usr/share/nginx/html:ro
+      - ./:/app:ro
+      # SSL (opcional)
+      - ./certs:/etc/nginx/certs:ro
+    depends_on:
+      - node-server
+      - php-fpm
+    networks:
+      - kokoro-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================================================
+  # Redis - Cache compartilhado (opcional)
+  # ==========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: kokoro-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - kokoro-network
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================================================
+  # PostgreSQL - Armazenar histórico de conversas (opcional)
+  # ==========================================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: kokoro-postgres
+    environment:
+      - POSTGRES_DB=kokoro
+      - POSTGRES_USER=kokoro
+      - POSTGRES_PASSWORD=kokoro_secure_123
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - kokoro-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kokoro -d kokoro"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  kokoro-models:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+  node-cache:
+    driver: local
+  redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+
+networks:
+  kokoro-network:
+    driver: bridge
+
+# =============================================================================
+# Usar com:
+#   docker compose up -d              # Iniciar todos os serviços
+#   docker compose down               # Parar todos os serviços
+#   docker compose logs -f            # Ver logs em tempo real
+#   docker compose ps                 # Status dos serviços
+#
+# URLs de acesso:
+#   Kokoro API:  http://localhost:8880
+#   Node API:    http://localhost:7000
+#   Nginx:       http://localhost:8080
+#   Redis:       localhost:6379
+#   PostgreSQL:  localhost:5432
+# =============================================================================

@@ -34,3 +34,9 @@ Thumbs.db
 # Segredos / dados locais
 *.pem
 *.key
+
+# Kokoro TTS (dependência externa)
+kokoro/old_project/node_modules/
+kokoro/audio_output/
+kokoro/.venv/
+kokoro/venv/

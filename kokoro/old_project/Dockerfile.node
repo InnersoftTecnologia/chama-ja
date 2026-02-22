@@ -1,0 +1,33 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Instalar dependências do sistema
+RUN apk add --no-cache \
+    curl \
+    tini
+
+# Copiar package files
+COPY package*.json ./
+
+# Instalar dependências Node
+RUN npm ci --only=production
+
+# Copiar código da aplicação
+COPY kokoro_tts_server.js ./
+
+# Criar diretórios necessários
+RUN mkdir -p /app/cache /app/audio_output && \
+    chmod 755 /app/cache /app/audio_output
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:7000/health || exit 1
+
+# Usar tini como entrypoint para melhor gerenciamento de processos
+ENTRYPOINT ["/sbin/tini", "--"]
+
+# Comando padrão
+CMD ["node", "kokoro_tts_server.js"]
+
+EXPOSE 7000

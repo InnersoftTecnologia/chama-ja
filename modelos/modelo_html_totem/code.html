@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html class="light" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Totem de Atendimento - Ferreira Costa</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#004B8D", // Deep Blue from Ferreira Costa brand
+                        priority: "#E67E22", // Warm orange for priority
+                        "background-light": "#F8FAFC",
+                        "background-dark": "#0F172A",
+                    },
+                    fontFamily: {
+                        display: ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "1rem",
+                        'xl': "1.5rem",
+                    },
+                },
+            },
+        };
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .touch-card:active {
+            transform: scale(0.97);
+            transition: transform 0.1s ease;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+<header class="p-6 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center shadow-sm">
+<div class="flex flex-col">
+<h1 class="text-2xl font-bold tracking-tight text-primary">FERREIRA COSTA</h1>
+<p class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400 font-medium">Home Center</p>
+</div>
+<div class="text-right">
+<div class="text-3xl font-bold text-slate-800 dark:text-slate-100 tabular-nums" id="clock">08:53:30</div>
+<div class="text-sm text-slate-500 dark:text-slate-400" id="date">Segunda-feira, 19 de janeiro de 2026</div>
+</div>
+</header>
+<main class="flex-1 p-4 md:p-6 grid grid-cols-2 gap-4 max-w-4xl mx-auto w-full">
+<div class="flex flex-col gap-4">
+<div class="bg-primary/10 dark:bg-primary/20 py-3 px-4 rounded-t-xl text-center">
+<h2 class="text-primary font-bold uppercase tracking-wide text-sm">Atendimento Normal</h2>
+</div>
+<button class="touch-card flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-800 border-2 border-primary/20 dark:border-primary/40 rounded-xl shadow-md hover:shadow-lg transition-all text-left w-full h-48">
+<span class="material-icons text-primary text-5xl mb-4">payments</span>
+<div class="text-center">
+<h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">Caixas</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Pagamento de Mercadorias</p>
+</div>
+</button>
+<button class="touch-card flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-800 border-2 border-primary/20 dark:border-primary/40 rounded-xl shadow-md hover:shadow-lg transition-all text-left w-full h-48">
+<span class="material-icons text-primary text-5xl mb-4">credit_card</span>
+<div class="text-center">
+<h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">Crédito e Cobrança</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Fatura e Cartão</p>
+</div>
+</button>
+</div>
+<div class="flex flex-col gap-4">
+<div class="bg-priority/10 dark:bg-priority/20 py-3 px-4 rounded-t-xl text-center">
+<h2 class="text-priority font-bold uppercase tracking-wide text-sm">Atendimento Preferencial</h2>
+</div>
+<button class="touch-card flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-800 border-2 border-priority/20 dark:border-priority/40 rounded-xl shadow-md hover:shadow-lg transition-all text-left w-full h-48">
+<span class="material-icons text-priority text-5xl mb-4">accessible</span>
+<div class="text-center">
+<h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">Caixas</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Gestantes, Idosos e PCD</p>
+</div>
+</button>
+<button class="touch-card flex flex-col items-center justify-center p-6 bg-white dark:bg-slate-800 border-2 border-priority/20 dark:border-priority/40 rounded-xl shadow-md hover:shadow-lg transition-all text-left w-full h-48">
+<span class="material-icons text-priority text-5xl mb-4">volunteer_activism</span>
+<div class="text-center">
+<h3 class="text-lg font-bold text-slate-800 dark:text-slate-100">Crédito e Cobrança</h3>
+<p class="text-sm text-slate-500 dark:text-slate-400 mt-1">Prioridade por Lei</p>
+</div>
+</button>
+</div>
+</main>
+<footer class="p-8 text-center bg-slate-100 dark:bg-slate-900/50 mt-auto">
+<p class="text-slate-600 dark:text-slate-400 font-medium">
+            Toque no serviço desejado para emitir sua senha.
+        </p>
+<div class="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-full text-blue-700 dark:text-blue-300 text-sm">
+<span class="material-icons text-sm">info</span>
+            Dica: Se você for preferencial, escolha as opções em laranja.
+        </div>
+</footer>
+<div class="fixed bottom-4 right-4 flex gap-2">
+<button class="p-3 bg-white dark:bg-slate-800 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 active:scale-95 transition-all" onclick="document.documentElement.classList.toggle('dark')">
+<span class="material-icons">dark_mode</span>
+</button>
+</div>
+<script>
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('pt-BR', { hour12: false });
+            document.getElementById('clock').textContent = timeStr;
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('date').textContent = now.toLocaleDateString('pt-BR', options);
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+        // Handle card clicks (visual feedback)
+        document.querySelectorAll('.touch-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const serviceName = card.querySelector('h3').innerText;
+                const isPriority = card.classList.contains('border-priority/20') || card.classList.contains('border-priority/40');
+                // Show a simple alert for demo
+                const type = isPriority ? 'PREFERENCIAL' : 'NORMAL';
+                console.log(`Senha emitida para ${serviceName} - ${type}`);
+            });
+        });
+    </script>
+
+</body></html>

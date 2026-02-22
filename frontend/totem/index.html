@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-bs-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Totem de Atendimento</title>
+  <link rel="icon" href="data:," />
+  <!-- Bootstrap 5.3.3 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="./totem.css" />
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="totem-header">
+    <div class="header-brand">
+      <div id="logoWrap" class="brand-logo d-none">
+        <img id="tenantLogo" alt="Logo" />
+      </div>
+      <div class="brand-text">
+        <h1 id="tenantName">FERREIRA COSTA</h1>
+        <p id="tenantSubtitle">HOME CENTER</p>
+      </div>
+    </div>
+    <div class="header-clock">
+      <div id="clock" class="clock-time">18:47:50</div>
+      <div id="date" class="clock-date">domingo, 18 de janeiro de 2026</div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="totem-main">
+    <!-- Loading State -->
+    <div id="loadingState" class="loading-state">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Carregando...</span>
+      </div>
+      <p class="mt-3">Carregando serviços...</p>
+    </div>
+
+    <!-- Services Grid -->
+    <div id="servicesContainer" class="services-container d-none">
+      <!-- Tab Headers -->
+      <div class="tab-headers">
+        <div class="tab-header tab-normal">
+          <span>ATENDIMENTO</span>
+          <span>NORMAL</span>
+        </div>
+        <div class="tab-header tab-priority">
+          <span>ATENDIMENTO</span>
+          <span>PREFERENCIAL</span>
+        </div>
+      </div>
+
+      <!-- Services Grid 2x2 -->
+      <div class="services-grid">
+        <div id="normalServices" class="services-column">
+          <!-- Normal services -->
+        </div>
+        <div id="preferentialServices" class="services-column">
+          <!-- Preferential services -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div id="emptyState" class="empty-state d-none">
+      <span class="material-icons">inbox</span>
+      <p>Nenhum serviço disponível no momento.</p>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="totem-footer">
+    <p class="footer-text">Toque no serviço desejado para emitir sua senha.</p>
+    <div class="footer-tip">
+      <span class="material-icons">info</span>
+      <span>Dica: Se você for preferencial, escolha as opções em laranja.</span>
+    </div>
+    <p id="statusText" class="footer-status"></p>
+  </footer>
+
+  <!-- Theme Toggle -->
+  <button id="btnThemeToggle" type="button" class="btn-theme" title="Alternar tema">
+    <span class="material-icons" id="themeIcon">dark_mode</span>
+  </button>
+
+  <!-- Overlay (Ticket Confirmation) -->
+  <div id="overlay" class="ticket-overlay d-none" aria-hidden="true">
+    <div class="overlay-backdrop" id="overlayBackdrop"></div>
+    <div class="overlay-dialog" role="dialog" aria-modal="true">
+      <div class="overlay-icon">
+        <span class="material-icons">check_circle</span>
+      </div>
+      <h3 class="overlay-title">Sua Senha</h3>
+      <div id="overlayCode" class="overlay-code">A-000</div>
+      <div class="overlay-meta">
+        <p><span class="text-muted">Serviço:</span> <strong id="overlayService">-</strong></p>
+        <p><span class="text-muted">Prioridade:</span> <strong id="overlayPriority">-</strong></p>
+      </div>
+      <button id="btnOk" type="button" class="btn btn-primary btn-lg btn-ok">OK</button>
+      <p id="overlayFootnote" class="overlay-footnote"></p>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Totem JS -->
+  <script src="./totem.js"></script>
+</body>
+</html>

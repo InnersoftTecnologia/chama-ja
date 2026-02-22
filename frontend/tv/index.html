@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Chamador — TV</title>
+    <link rel="icon" href="data:," />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./tv.css" />
+  </head>
+  <body class="text-white">
+    <div
+      class="flex flex-col h-screen w-full p-4 lg:p-6 gap-4 lg:gap-6 aspect-video"
+    >
+      <header
+        class="flex items-center justify-between px-8 py-4 bg-surface-dark/80 rounded-2xl border border-white/10 shadow-2xl"
+      >
+        <div class="flex items-center gap-5">
+          <div class="h-12" id="tenantLogoContainer">
+            <img src="./images/logo_fc.svg" alt="Logo" class="h-full w-auto" id="tenantLogo" />
+          </div>
+          <div>
+            <h1 class="text-2xl font-black tracking-tight uppercase" id="tenantName">
+              FERREIRA COSTA
+            </h1>
+            <p
+              class="text-[10px] text-primary font-bold tracking-[0.3em] uppercase"
+              id="tenantSubtitle"
+            >
+              Gestão de Atendimento
+            </p>
+          </div>
+        </div>
+        <div class="flex items-center gap-8">
+          <div class="flex flex-col items-end">
+            <p class="text-4xl font-black tracking-tighter text-white" id="clock">
+              --:--
+            </p>
+            <p class="text-xs text-primary/70 font-bold tracking-widest uppercase" id="date">
+              --
+            </p>
+          </div>
+        </div>
+      </header>
+
+      <main class="flex flex-1 gap-4 lg:gap-6 overflow-hidden">
+        <!-- Video (left, primary) -->
+        <section
+          class="flex-[5] relative bg-black rounded-3xl overflow-hidden border border-white/10"
+          aria-label="Vídeos"
+        >
+          <div class="absolute inset-0 z-0" id="youtubeContainer">
+            <!-- Filled by tv.js (YouTube IFrame API) -->
+            <div class="h-full w-full flex items-center justify-center text-white/30 text-sm" id="videoPlaceholder">
+              Carregando vídeos…
+            </div>
+            <button
+              id="enableAudioBtn"
+              class="hidden absolute bottom-6 right-6 px-4 py-3 rounded-xl bg-primary/90 backdrop-blur-sm border border-primary shadow-lg text-background-dark font-bold text-sm uppercase tracking-wide hover:bg-primary hover:scale-105 transition-all z-50 flex items-center gap-2"
+              type="button"
+              aria-label="Ativar áudio do vídeo"
+              title="Clique para ativar o áudio"
+            >
+              <span class="material-symbols-outlined text-xl">volume_up</span>
+              Ativar Áudio
+            </button>
+          </div>
+          <!-- Keep video visible; only a light vignette on the bottom -->
+          <!-- Overlay moved behind video: z-0 instead of z-10 -->
+          <div class="pointer-events-none absolute inset-0 z-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
+        </section>
+
+        <!-- Current calls in service (middle) -->
+        <section class="flex-[2] flex items-center justify-center">
+          <div
+            class="w-full h-full flex flex-col bg-primary/5 border border-primary/30 rounded-3xl p-6 relative overflow-hidden"
+            aria-label="Senhas em atendimento"
+          >
+            <div class="flex items-center gap-3 mb-4">
+              <span class="material-symbols-outlined text-primary text-3xl"
+                >notifications_active</span
+              >
+              <span class="text-xs font-black tracking-[0.35em] uppercase text-primary"
+                >EM ATENDIMENTO</span
+              >
+            </div>
+
+            <div class="flex-1 overflow-y-auto flex flex-col gap-4" id="currentCallsContainer">
+              <!-- Filled by JS with all calls in service -->
+            </div>
+          </div>
+        </section>
+
+        <aside
+          class="flex-[1.8] glass-panel rounded-3xl flex flex-col overflow-hidden shadow-2xl border border-white/10"
+        >
+          <div class="p-6 bg-white/5 border-b border-white/10">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-accent text-3xl">history</span>
+                <h4 class="text-xl font-bold tracking-tight">Últimas Senhas</h4>
+              </div>
+              <span
+                class="text-xs font-black uppercase text-accent tracking-[0.15em] bg-accent/10 px-3 py-1.5 rounded-lg border border-accent/20 whitespace-nowrap"
+                >HISTÓRICO</span
+              >
+            </div>
+          </div>
+          <div class="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4" id="history">
+            <!-- filled by JS -->
+          </div>
+        </aside>
+      </main>
+
+      <footer
+        class="h-20 bg-surface-dark border-t border-white/10 flex items-center overflow-hidden rounded-2xl shadow-2xl"
+      >
+        <div class="bg-primary h-full px-10 flex items-center z-20 shadow-[10px_0_20px_rgba(0,0,0,0.5)]">
+          <span class="text-background-dark font-black uppercase tracking-[0.2em] whitespace-nowrap text-lg"
+            >AVISOS</span
+          >
+        </div>
+        <div class="flex-1 marquee-container">
+          <div class="marquee-content flex items-center gap-24" id="ticker">
+            <!-- filled by JS -->
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <!-- Overlay / Modal -->
+    <div class="fixed inset-0 z-50 items-center justify-center overlay" id="overlay">
+      <div class="absolute inset-0 bg-black/70"></div>
+      <div
+        class="relative w-full max-w-4xl mx-6 rounded-3xl border-2 border-primary/40 bg-surface-dark shadow-2xl overflow-hidden"
+      >
+        <div class="p-10 text-center">
+          <div class="flex items-center justify-center gap-4 mb-4">
+            <span class="material-symbols-outlined text-primary text-4xl"
+              >notifications_active</span
+            >
+            <h2 class="text-white text-3xl font-bold tracking-[0.15em] uppercase">
+              Nova Chamada
+            </h2>
+            <span class="material-symbols-outlined text-primary text-4xl"
+              >notifications_active</span
+            >
+          </div>
+          <div class="h-1 w-24 bg-primary rounded-full mx-auto mb-8"></div>
+          <p class="text-primary text-2xl font-bold tracking-[0.3em] uppercase mb-4">
+            Senha
+          </p>
+          <h1 class="text-white text-[10rem] font-black leading-none tracking-tighter mb-8" id="overlayTicket">
+            ---
+          </h1>
+          <div class="bg-primary px-10 py-4 rounded-lg inline-block">
+            <p class="text-background-dark text-5xl font-black tracking-tight uppercase" id="overlayCounter">
+              Guichê --
+            </p>
+          </div>
+          <p class="text-primary/70 text-xl font-medium tracking-widest uppercase mt-6" id="overlayService">
+            Atendimento
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script src="./tv.js"></script>
+  </body>
+</html>
+

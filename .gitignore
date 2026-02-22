@@ -1,0 +1,36 @@
+# Documentação local (não versionada)
+docs/
+documentacoes/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Ambiente e runtime
+.env
+.env.local
+.run/
+*.log
+
+# IDE / OS / projeto
+.idea/
+.vscode/
+.claude/
+=*
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Segredos / dados locais
+*.pem
+*.key

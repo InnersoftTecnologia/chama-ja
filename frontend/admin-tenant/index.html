@@ -1,0 +1,2247 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin do Tenant — Chamador</title>
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+      /* Light/Dark toggle (Bootstrap 5.3 color modes) */
+      :root {
+        --scart-primary: #2f5fa7;
+        --scart-accent: #00a7c7;
+        --scart-bg: #f5f7fb;
+
+        /* SCart (AmLic) pastel palette / shadows (from viewTitulo.php reference) */
+        --amlic-blue: #52658C;
+        --amlic-blue-secondary: #4A5A7A;
+        --amlic-orange: #F39C12;
+        --primary-color: var(--amlic-blue);
+        --primary-gradient: linear-gradient(135deg, var(--amlic-blue) 0%, var(--amlic-blue-secondary) 100%);
+        --bg-primary: #f8f9fa;
+        --bg-secondary: #ffffff;
+        --text-primary: #2c3e50;
+        --text-secondary: #6c757d;
+        --border-color: #e9ecef;
+        --shadow-light: 0 2px 10px rgba(0, 0, 0, 0.08);
+        --shadow-medium: 0 4px 20px rgba(0, 0, 0, 0.12);
+        --shadow-heavy: 0 8px 30px rgba(0, 0, 0, 0.15);
+      }
+      [data-bs-theme="dark"] body {
+        background: radial-gradient(1200px 600px at 20% 20%, rgba(0, 167, 199, 0.14), transparent 60%),
+          radial-gradient(900px 500px at 80% 30%, rgba(47, 95, 167, 0.18), transparent 55%),
+          #060816;
+      }
+      [data-bs-theme="light"] body {
+        background: var(--scart-bg);
+      }
+      body {
+        font-family: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      }
+      .card-glass {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        backdrop-filter: blur(10px);
+      }
+      [data-bs-theme="light"] .card-glass {
+        background: #ffffff;
+        border-color: rgba(0, 0, 0, 0.08);
+      }
+      .brand-primary {
+        color: var(--scart-primary);
+      }
+      pre {
+        max-height: 320px;
+      }
+      .sidebar {
+        min-width: 260px;
+      }
+
+      /* ===== Topbar (AmLic Blue) ===== */
+      .navbar-amlic {
+        background: var(--primary-gradient);
+        border-bottom: none !important;
+      }
+      .navbar-amlic .navbar-brand {
+        color: #fff;
+        font-weight: 700;
+      }
+      .navbar-amlic .btn-theme-toggle {
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        color: #fff;
+        font-size: 0.8rem;
+        padding: 0.35rem 0.75rem;
+        border-radius: 20px;
+        transition: all 0.2s ease;
+      }
+      .navbar-amlic .btn-theme-toggle:hover {
+        background: rgba(255, 255, 255, 0.25);
+        color: #fff;
+      }
+
+      /* ===== Footer (SCart style) ===== */
+      .footer-innersoft {
+        background: var(--primary-gradient);
+        color: rgba(255, 255, 255, 0.85);
+        padding: 1rem 0;
+        margin-top: auto;
+        font-size: 0.8rem;
+      }
+      .footer-innersoft a {
+        color: #fff;
+        text-decoration: none;
+      }
+      .footer-innersoft a:hover {
+        text-decoration: underline;
+      }
+      .footer-innersoft .footer-logo {
+        height: 28px;
+        width: auto;
+      }
+      .footer-innersoft .footer-divider {
+        width: 1px;
+        height: 20px;
+        background: rgba(255, 255, 255, 0.3);
+        margin: 0 1rem;
+      }
+      /* Layout wrapper para footer fixo no rodapé */
+      body {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .main-content {
+        flex: 1;
+      }
+
+      /* ===== Tab Navigation (SCart style - AmLic Blue) ===== */
+      .nav-tabs-scart {
+        border-bottom: 2px solid var(--amlic-blue);
+        gap: 4px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+      }
+      .nav-tabs-scart::-webkit-scrollbar {
+        height: 4px;
+      }
+      .nav-tabs-scart::-webkit-scrollbar-thumb {
+        background: rgba(82, 101, 140, 0.3);
+        border-radius: 2px;
+      }
+      .nav-tabs-scart .nav-link {
+        border: none;
+        border-radius: 8px 8px 0 0;
+        padding: 12px 20px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--amlic-blue);
+        background: rgba(82, 101, 140, 0.08);
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .nav-tabs-scart .nav-link:hover {
+        background: rgba(82, 101, 140, 0.15);
+        color: var(--amlic-blue);
+      }
+      .nav-tabs-scart .nav-link.active {
+        background: var(--amlic-blue);
+        color: #fff;
+        box-shadow: 0 -2px 8px rgba(82, 101, 140, 0.25);
+      }
+      .nav-tabs-scart .nav-link .tab-icon {
+        font-size: 1.1rem;
+      }
+      [data-bs-theme="dark"] .nav-tabs-scart {
+        border-bottom-color: rgba(82, 101, 140, 0.5);
+      }
+      [data-bs-theme="dark"] .nav-tabs-scart .nav-link {
+        color: rgba(255, 255, 255, 0.75);
+        background: rgba(255, 255, 255, 0.06);
+      }
+      [data-bs-theme="dark"] .nav-tabs-scart .nav-link:hover {
+        background: rgba(255, 255, 255, 0.12);
+        color: #fff;
+      }
+      [data-bs-theme="dark"] .nav-tabs-scart .nav-link.active {
+        background: var(--amlic-blue);
+        color: #fff;
+      }
+      .tab-content-scart {
+        padding-top: 1.5rem;
+      }
+      .tab-pane {
+        animation: fadeInTab 0.25s ease;
+      }
+      @keyframes fadeInTab {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+
+      /* Estado inicial: abas desabilitadas até login */
+      #adminTabs {
+        pointer-events: none;
+        opacity: 0.5;
+      }
+      #adminTabsContent {
+        opacity: 0.4;
+        pointer-events: none;
+      }
+      /* Após login, JS habilita (inline styles) */
+
+      /* Login modal layout (SCart-ish, like provided model) */
+      .login-modal .modal-content {
+        overflow: hidden;
+        border: 0;
+        border-radius: 14px;
+      }
+      .login-hero {
+        /* Fundo azul bem clarinho (quase branco), no padrão AmLic/SCart */
+        background: linear-gradient(135deg, rgba(82, 101, 140, 0.12), rgba(0, 167, 199, 0.10));
+        background-color: #f6f8ff;
+        color: var(--text-primary);
+        min-height: 100%;
+        position: relative;
+      }
+      .login-hero::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(650px 350px at 20% 25%, rgba(82,101,140,0.10), transparent 55%),
+          radial-gradient(650px 350px at 80% 70%, rgba(0,167,199,0.12), transparent 60%);
+        pointer-events: none;
+      }
+      .login-hero-inner {
+        position: relative;
+        z-index: 1;
+      }
+      .login-title {
+        font-size: clamp(1.6rem, 2.6vw, 2.2rem);
+        letter-spacing: -0.02em;
+      }
+      .login-hero-logo {
+        max-width: min(320px, 80%);
+        height: auto;
+        filter: drop-shadow(0 10px 18px rgba(0,0,0,0.10));
+      }
+
+      /* Branding upload area (like screenshot) */
+      .branding-grid {
+        display: grid;
+        grid-template-columns: 1.3fr 0.7fr;
+        gap: 16px;
+      }
+      @media (max-width: 992px) {
+        .branding-grid { grid-template-columns: 1fr; }
+      }
+      .preview-box {
+        border-radius: 10px;
+        border: 1px solid rgba(0, 0, 0, 0.10);
+        background: rgba(255, 255, 255, 0.85);
+        min-height: 110px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 14px;
+      }
+      [data-bs-theme="dark"] .preview-box {
+        border-color: rgba(255, 255, 255, 0.14);
+        background: rgba(0, 0, 0, 0.22);
+      }
+      .btn-h44 .btn { height: 44px; }
+
+      /* ===== SCart-style components (scoped) ===== */
+      .scart-card {
+        border-radius: 16px;
+        box-shadow: var(--shadow-medium);
+        border: 1px solid var(--border-color);
+        background: var(--bg-secondary);
+      }
+      [data-bs-theme="dark"] .scart-card {
+        background: rgba(255, 255, 255, 0.06);
+        border-color: rgba(255, 255, 255, 0.12);
+      }
+      .card-header-gradient {
+        background: var(--primary-gradient) !important;
+        padding: 1.25rem 1.5rem !important;
+        border-radius: 16px 16px 0 0 !important;
+        border: none;
+        position: relative;
+        overflow: hidden;
+        color: #fff;
+      }
+      .card-header-gradient::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 200px;
+        height: 200px;
+        background: radial-gradient(circle, rgba(243, 156, 18, 0.15) 0%, transparent 70%);
+        border-radius: 50%;
+        transform: translate(30%, -30%);
+      }
+      .card-header-gradient * { position: relative; z-index: 1; }
+      .card-header-gradient .icon-accent { color: var(--amlic-orange); }
+
+      .scart-section-title {
+        color: var(--text-primary);
+        font-weight: 700;
+        font-size: 0.95rem;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      .scart-section-title::before {
+        content: '';
+        width: 3px;
+        height: 18px;
+        background: var(--primary-color);
+        border-radius: 2px;
+      }
+
+      .scart-input.form-control,
+      .scart-input.form-select,
+      .scart-input textarea.form-control {
+        border: 2px solid #d1d9e6 !important;
+        border-radius: 10px;
+        padding: 0.6rem 0.8rem;
+        background: #fff;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      }
+      .scart-input.form-control:focus,
+      .scart-input.form-select:focus,
+      .scart-input textarea.form-control:focus {
+        border-color: var(--amlic-blue) !important;
+        box-shadow: 0 0 0 0.2rem rgba(82, 101, 140, 0.15);
+        background: #FFFACD !important; /* pastel yellow */
+      }
+      [data-bs-theme="dark"] .scart-input.form-control,
+      [data-bs-theme="dark"] .scart-input.form-select,
+      [data-bs-theme="dark"] .scart-input textarea.form-control {
+        background: rgba(0,0,0,0.20);
+        border-color: rgba(255,255,255,0.16) !important;
+        color: #fff;
+      }
+      [data-bs-theme="dark"] .scart-input.form-control:focus,
+      [data-bs-theme="dark"] .scart-input.form-select:focus,
+      [data-bs-theme="dark"] .scart-input textarea.form-control:focus {
+        background: rgba(255, 250, 205, 0.14) !important;
+      }
+
+      .btn-scart-primary {
+        background: var(--primary-gradient);
+        color: #fff;
+        border: none;
+        border-radius: 25px;
+        font-weight: 600;
+        padding: 10px 18px;
+        box-shadow: 0 4px 15px rgba(82, 101, 140, 0.25);
+      }
+      .btn-scart-primary:hover { transform: translateY(-1px); color:#fff; }
+      .btn-scart-secondary {
+        background: #6c757d;
+        color: #fff;
+        border: none;
+        border-radius: 25px;
+        padding: 10px 18px;
+      }
+      .btn-scart-secondary:hover { transform: translateY(-1px); color:#fff; }
+
+      .btn-action {
+        border-radius: 20px;
+        padding: 8px 14px;
+        font-size: 12px;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .btn-action:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,0.16); }
+      .btn-action.btn-delete { background: linear-gradient(135deg, #e53e3e, #c53030); color: #fff; }
+      .btn-action.btn-refresh { background: linear-gradient(135deg, #3498db, #2980b9); color: #fff; }
+      .btn-action.btn-new { background: linear-gradient(135deg, #f39c12, #e67e22); color: #fff; }
+      .btn-action.btn-toggle-on { background: linear-gradient(135deg, #48bb78, #38a169); color: #fff; }
+      .btn-action.btn-toggle-off { background: linear-gradient(135deg, #a0aec0, #718096); color: #fff; }
+      .btn-action.btn-filter-active { background: linear-gradient(135deg, var(--scart-primary), #1e3f73); color: #fff; }
+      .btn-action:not(.btn-filter-active) { background: rgba(0, 0, 0, 0.1); color: var(--text-secondary); }
+      [data-bs-theme="dark"] .btn-action:not(.btn-filter-active) { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.7); }
+
+      .scart-table {
+        background: var(--bg-secondary);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--shadow-light);
+      }
+      [data-bs-theme="dark"] .scart-table {
+        background: rgba(0,0,0,0.18);
+        box-shadow: none;
+      }
+      .scart-table table { margin: 0; }
+      .scart-table thead th {
+        background: rgba(82,101,140,0.10);
+        color: var(--text-primary);
+        font-weight: 700;
+        border-bottom: 1px solid rgba(0,0,0,0.06);
+      }
+      [data-bs-theme="dark"] .scart-table thead th {
+        background: rgba(255,255,255,0.08);
+        color: rgba(255,255,255,0.92);
+        border-bottom-color: rgba(255,255,255,0.10);
+      }
+      .scart-table tbody tr:hover { background: rgba(243,156,18,0.08); }
+      [data-bs-theme="dark"] .scart-table tbody tr:hover { background: rgba(243,156,18,0.10); }
+
+      .table-scroll {
+        max-height: 340px;
+        overflow: auto;
+      }
+
+      /* Dashboard cards (inspired by provided print) */
+      .metric-card {
+        background: #fff;
+        border-radius: 14px;
+        box-shadow: var(--shadow-light);
+        border: 1px solid var(--border-color);
+        position: relative;
+        overflow: hidden;
+      }
+      [data-bs-theme="dark"] .metric-card {
+        background: rgba(255,255,255,0.06);
+        border-color: rgba(255,255,255,0.12);
+        box-shadow: none;
+      }
+      .metric-card::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: var(--amlic-blue);
+      }
+      .metric-accent-blue::before { background: #52658C; }
+      .metric-accent-orange::before { background: #F39C12; }
+      .metric-accent-cyan::before { background: #00a7c7; }
+      .metric-accent-green::before { background: #1f9d55; }
+      .metric-accent-purple::before { background: #6A4C93; }
+      .metric-value {
+        font-size: 1.8rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+
+      /* Modal (SCart padrão visual) */
+      .modal-padrao-content {
+        border: none;
+        border-radius: 20px;
+        box-shadow: var(--shadow-heavy);
+        overflow: hidden;
+      }
+      .modal-padrao-header {
+        background: var(--primary-gradient);
+        color: #fff;
+        padding: 18px 22px;
+        border: none;
+        position: relative;
+      }
+      .modal-padrao-header::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at 20% 20%, rgba(255,255,255,0.14), transparent 45%),
+          radial-gradient(circle at 80% 30%, rgba(243,156,18,0.18), transparent 50%);
+        opacity: 0.9;
+      }
+      .modal-padrao-header * { position: relative; z-index: 1; }
+
+      /* SCart-ish soft alerts (pastel) */
+      .alert-soft {
+        border: 1px solid rgba(0, 0, 0, 0.06);
+        background: rgba(47, 95, 167, 0.08);
+      }
+      [data-bs-theme="dark"] .alert-soft {
+        border-color: rgba(255, 255, 255, 0.10);
+        background: rgba(0, 167, 199, 0.10);
+      }
+
+      /* Make placeholders readable in both themes */
+      .form-control::placeholder {
+        opacity: 0.7;
+      }
+      [data-bs-theme="dark"] .form-control,
+      [data-bs-theme="dark"] .form-select {
+        background-color: rgba(0, 0, 0, 0.28);
+        border-color: rgba(255, 255, 255, 0.16);
+        color: #fff;
+      }
+      [data-bs-theme="dark"] .form-control::placeholder {
+        color: rgba(255, 255, 255, 0.55);
+      }
+      [data-bs-theme="dark"] .list-group-item {
+        color: rgba(255, 255, 255, 0.82);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Login Modal (shown on load when not authenticated) -->
+    <div class="modal fade login-modal" id="loginModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-xl modal-fullscreen-sm-down">
+        <div class="modal-content">
+          <div class="row g-0">
+            <div class="col-12 col-lg-6 p-4 p-lg-5">
+              <div class="d-flex align-items-center justify-content-between mb-4">
+                <div class="fw-bold">Gerenciamento do Chamador</div>
+                <span class="badge text-bg-light border">Tenant</span>
+              </div>
+
+              <div class="login-title fw-bold mb-1">Faça seu login</div>
+              <div class="text-body-secondary mb-4">Acesso do administrador</div>
+
+              <div class="mb-3">
+                <label class="form-label">E-mail</label>
+                <input id="email" class="form-control" value="admin@ferreiracosta.com.br" autocomplete="username" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Senha</label>
+                <input id="password" type="password" class="form-control" value="admin123" autocomplete="current-password" />
+              </div>
+
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" value="" id="rememberMe" checked />
+                  <label class="form-check-label" for="rememberMe">Lembrar de mim</label>
+                </div>
+                <button id="themeToggleInModal" class="btn btn-sm btn-outline-secondary">Light</button>
+              </div>
+
+              <div class="d-grid gap-2 btn-h44">
+                <button id="btnLogin" class="btn-scart-primary">Entrar</button>
+              </div>
+              <div id="loginStatus" class="text-body-secondary small mt-3"></div>
+            </div>
+
+            <div class="col-12 col-lg-6 d-none d-lg-block">
+              <div class="login-hero h-100 p-5">
+                <div class="login-hero-inner">
+                  <div class="d-flex align-items-center justify-content-center" style="min-height: 280px;">
+                    <img class="login-hero-logo" src="images/innersof_logo.png" alt="Innersoft" />
+                  </div>
+                  <div class="text-center mt-4">
+                    <div class="fw-semibold">Soluções Inteligentes para Gestão de Atendimento</div>
+                    
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Topbar -->
+    <nav class="navbar navbar-expand-lg navbar-amlic">
+      <div class="container-fluid px-4">
+        <span class="navbar-brand">Gerenciamento do Chamador</span>
+        <div class="d-flex align-items-center gap-3 ms-auto">
+          <button id="themeToggle" class="btn btn-theme-toggle">Light</button>
+        </div>
+      </div>
+    </nav>
+    <!-- Hidden elements for JS compatibility -->
+    <span id="edgeBase" class="d-none"></span>
+    <span id="tenantCnpj" class="d-none"></span>
+    <button id="btnLogoutTop" class="d-none"></button>
+
+    <div class="main-content">
+    <div class="container-fluid px-4 py-4">
+      <!-- Header com identificação do tenant -->
+      <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap mb-4">
+        <div class="d-flex align-items-center gap-3">
+          <img id="tenantLogoMini" alt="logo do tenant" style="height:40px; width:auto; display:none" />
+          <div>
+            <h1 class="fw-bold mb-0 fs-4">Painel de Getão do Chamador</h1>
+            <div class="text-body-secondary small">
+              <span id="tenantName">-</span> • CNPJ: <span id="tenantCnpjFull">-</span> • <span id="tenantStatus" class="badge text-bg-light border">-</span>
+            </div>
+          </div>
+        </div>
+        <button id="btnLogout" class="btn btn-outline-secondary d-none">Sair</button>
+      </div>
+
+      <!-- Tab Navigation -->
+      <ul class="nav nav-tabs nav-tabs-scart" id="adminTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="tab-dashboard" data-bs-toggle="tab" data-bs-target="#pane-dashboard" type="button" role="tab" aria-controls="pane-dashboard" aria-selected="true">
+            <span class="tab-icon">📊</span> Dashboard
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-branding" data-bs-toggle="tab" data-bs-target="#pane-branding" type="button" role="tab" aria-controls="pane-branding" aria-selected="false">
+            <span class="tab-icon">🎨</span> Branding
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-operators" data-bs-toggle="tab" data-bs-target="#pane-operators" type="button" role="tab" aria-controls="pane-operators" aria-selected="false">
+            <span class="tab-icon">👥</span> Operadores
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-counters" data-bs-toggle="tab" data-bs-target="#pane-counters" type="button" role="tab" aria-controls="pane-counters" aria-selected="false">
+            <span class="tab-icon">🏢</span> Guichês
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-services" data-bs-toggle="tab" data-bs-target="#pane-services" type="button" role="tab" aria-controls="pane-services" aria-selected="false">
+            <span class="tab-icon">📋</span> Serviços
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" id="tab-tv-panel" data-bs-toggle="tab" data-bs-target="#pane-tv-panel" type="button" role="tab" aria-controls="pane-tv-panel" aria-selected="false">
+            <span class="tab-icon">📺</span> Painel do Chamador
+          </button>
+        </li>
+      </ul>
+
+      <!-- Tab Content -->
+      <div class="tab-content tab-content-scart" id="adminTabsContent">
+
+        <!-- Dashboard Tab -->
+        <div class="tab-pane fade show active" id="pane-dashboard" role="tabpanel" aria-labelledby="tab-dashboard">
+          <div class="row g-3">
+            <!-- Métricas principais -->
+            <div class="col-6 col-md-4 col-lg-2">
+              <div class="metric-card metric-accent-blue p-3 h-100">
+                <div class="small text-body-secondary">Guichês</div>
+                <div id="dashCounters" class="metric-value mt-1">-</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+              <div class="metric-card metric-accent-cyan p-3 h-100">
+                <div class="small text-body-secondary">Serviços</div>
+                <div id="dashServices" class="metric-value mt-1">-</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+              <div class="metric-card metric-accent-purple p-3 h-100">
+                <div class="small text-body-secondary">Operadores</div>
+                <div id="dashOperators" class="metric-value mt-1">-</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+              <div class="metric-card metric-accent-orange p-3 h-100">
+                <div class="small text-body-secondary">Em atendimento (60m)</div>
+                <div id="dashInService" class="metric-value mt-1">-</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+              <div class="metric-card metric-accent-green p-3 h-100">
+                <div class="small text-body-secondary">Atendidos hoje</div>
+                <div id="dashAttendedToday" class="metric-value mt-1">-</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-lg-2">
+              <div class="metric-card metric-accent-blue p-3 h-100">
+                <div class="small text-body-secondary">Última chamada</div>
+                <div id="dashLastCall" class="fw-semibold mt-2" style="font-size: 0.85rem;">-</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Branding Tab -->
+        <div class="tab-pane fade" id="pane-branding" role="tabpanel" aria-labelledby="tab-branding">
+          <div class="card scart-card">
+            <div class="card-header-gradient">
+              <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                <div>
+                  <div class="scart-section-title text-white">Logo do Tenant</div>
+                  <div class="small opacity-75 mt-1">Envie PNG/JPG/SVG. A TV carrega automaticamente.</div>
+                </div>
+              </div>
+            </div>
+            <div class="card-body p-4">
+              <div class="branding-grid mt-1">
+                <div>
+                  <div class="small text-body-secondary mb-2">Selecione o arquivo</div>
+                  <input id="logoFile" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml" class="form-control scart-input" />
+                  <div class="d-flex gap-3 mt-3 btn-h44">
+                    <button id="btnUploadLogo" class="btn-scart-primary flex-fill">Salvar logo</button>
+                    <button id="btnClearLogo" class="btn-scart-secondary flex-fill">Remover</button>
+                  </div>
+                </div>
+                <div>
+                  <div class="small text-body-secondary mb-2">Preview</div>
+                  <div class="preview-box">
+                    <img id="logoPreview" alt="logo preview" style="max-height:90px; max-width:100%; display:none" />
+                    <div id="logoPreviewEmpty" class="text-body-secondary small">Sem logo configurada.</div>
+                  </div>
+                </div>
+              </div>
+              <div class="alert alert-soft mt-3 mb-0 small">
+                Dica: use SVG/PNG com fundo transparente. A TV aplica automaticamente no próximo refresh/poll.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Operadores Tab -->
+        <div class="tab-pane fade" id="pane-operators" role="tabpanel" aria-labelledby="tab-operators">
+          <div class="card scart-card">
+            <div class="card-header-gradient">
+              <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                <div>
+                  <div class="scart-section-title text-white">Operadores</div>
+                  <div class="small opacity-75 mt-1">Usuários que realizam chamadas no sistema.</div>
+                </div>
+                <div class="d-flex gap-2">
+                  <button id="btnRefreshUsers" class="btn-action btn-refresh">Atualizar</button>
+                  <button id="btnOpenUserModal" class="btn-action btn-new">Novo Operador</button>
+                </div>
+              </div>
+            </div>
+            <div class="card-body p-4">
+              <div class="scart-table">
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle" id="usersTable"></table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Guichês Tab -->
+        <div class="tab-pane fade" id="pane-counters" role="tabpanel" aria-labelledby="tab-counters">
+          <div class="card scart-card">
+            <div class="card-header-gradient">
+              <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                <div>
+                  <div class="scart-section-title text-white">Guichês</div>
+                  <div class="small opacity-75 mt-1">Pontos de atendimento disponíveis.</div>
+                </div>
+                <div class="d-flex gap-2">
+                  <button id="btnRefreshCounters" class="btn-action btn-refresh">Atualizar</button>
+                  <button id="btnOpenCounterModal" class="btn-action btn-new">Novo Guichê</button>
+                </div>
+              </div>
+            </div>
+            <div class="card-body p-4">
+              <div class="scart-table">
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle" id="countersTable"></table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Serviços Tab -->
+        <div class="tab-pane fade" id="pane-services" role="tabpanel" aria-labelledby="tab-services">
+          <div class="card scart-card">
+            <div class="card-header-gradient">
+              <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                <div>
+                  <div class="scart-section-title text-white">Serviços</div>
+                  <div class="small opacity-75 mt-1">Filas e tipos de atendimento.</div>
+                </div>
+                <div class="d-flex gap-2">
+                  <button id="btnRefreshServices" class="btn-action btn-refresh">Atualizar</button>
+                  <button id="btnOpenServiceModal" class="btn-action btn-new">Novo Serviço</button>
+                </div>
+              </div>
+            </div>
+            <div class="card-body p-4">
+              <div class="scart-table">
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle" id="servicesTable"></table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Painel do Chamador Tab -->
+        <div class="tab-pane fade" id="pane-tv-panel" role="tabpanel" aria-labelledby="tab-tv-panel">
+
+          <!-- Seção: Configurações da TV -->
+          <div class="card scart-card mb-4">
+            <div class="card-header-gradient">
+              <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                <div>
+                  <div class="scart-section-title text-white">Configurações da TV</div>
+                  <div class="small opacity-75 mt-1">Aparência e comportamento do painel chamador.</div>
+                </div>
+                <div class="d-flex gap-2">
+                  <button id="btnRefreshTVSettings" class="btn-action btn-refresh">Atualizar</button>
+                </div>
+              </div>
+            </div>
+            <div class="card-body p-4">
+              <div class="row g-4">
+                <!-- Card: Tema -->
+                <div class="col-12 col-lg-6">
+                  <div class="border rounded-4 p-3 bg-body-tertiary">
+                    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                      <div>
+                        <div class="fw-bold">Tema do Painel</div>
+                        <div class="text-body-secondary small">Aparência (cores) do painel TV.</div>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <button id="btnThemeDark" class="btn-action btn-toggle-on" style="min-width: 100px;">Dark</button>
+                        <button id="btnThemeLight" class="btn-action btn-toggle-off" style="min-width: 100px;">Light</button>
+                      </div>
+                    </div>
+                    <div class="alert alert-soft small mb-0 mt-3">
+                      Dica: use <b>Light</b> em ambientes claros e <b>Dark</b> para reduzir brilho em TVs/monitores.
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Card: Áudio de chamada -->
+                <div class="col-12 col-lg-6">
+                  <div class="border rounded-4 p-3 bg-body-tertiary">
+                    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                      <div>
+                        <div class="fw-bold">Áudio de Chamada</div>
+                        <div class="text-body-secondary small">Som (bip) quando uma nova senha é chamada.</div>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <button id="btnAudioOn" class="btn-action btn-toggle-on" style="min-width: 110px;">Ativado</button>
+                        <button id="btnAudioOff" class="btn-action btn-toggle-off" style="min-width: 110px;">Desativado</button>
+                      </div>
+                    </div>
+                    <div class="alert alert-soft small mb-0 mt-3">
+                      Se estiver em um local sensível a ruídos, desative o bip e use apenas o destaque visual da chamada.
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Card: Áudio do vídeo -->
+                <div class="col-12 col-lg-6">
+                  <div class="border rounded-4 p-3 bg-body-tertiary">
+                    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                      <div>
+                        <div class="fw-bold">Áudio do Vídeo</div>
+                        <div class="text-body-secondary small">Controle remoto do som do YouTube na TV.</div>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <button id="btnVideoAudioOn" class="btn-action btn-toggle-off" style="min-width: 110px;">Ativado</button>
+                        <button id="btnVideoAudioOff" class="btn-action btn-toggle-on" style="min-width: 110px;">Mutado</button>
+                      </div>
+                    </div>
+                    <div class="alert alert-soft small mb-0 mt-3">
+                      Nota: alguns navegadores bloqueiam autoplay com som. Se necessário, use o botão “Ativar Áudio” na TV.
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Card: Reprodução do vídeo -->
+                <div class="col-12 col-lg-6">
+                  <div class="border rounded-4 p-3 bg-body-tertiary">
+                    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                      <div>
+                        <div class="fw-bold">Reprodução do Vídeo</div>
+                        <div class="text-body-secondary small">Pausar ou reproduzir o vídeo na TV.</div>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <button id="btnVideoPlay" class="btn-action btn-toggle-on" style="min-width: 110px;">Reproduzir</button>
+                        <button id="btnVideoPause" class="btn-action btn-toggle-off" style="min-width: 110px;">Pausar</button>
+                      </div>
+                    </div>
+                    <div class="alert alert-soft small mb-0 mt-3">
+                      Use <b>Pausar</b> durante comunicados importantes ou quando não houver conteúdo apropriado para o momento.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Seção: Playlist de Vídeos (YouTube) -->
+          <div class="card scart-card mb-4">
+            <div class="card-header-gradient">
+              <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                <div>
+                  <div class="scart-section-title text-white">Playlist de Vídeos</div>
+                  <div class="small opacity-75 mt-1">Gerencie os vídeos exibidos na TV (ordem por posição).</div>
+                </div>
+                <div class="d-flex gap-2">
+                  <button id="btnRefreshYouTube" class="btn-action btn-refresh">Atualizar</button>
+                  <button id="btnOpenYouTubeModal" class="btn-action btn-new">Novo Item</button>
+                </div>
+              </div>
+            </div>
+            <div class="card-body p-4">
+              <div class="alert alert-soft small mb-3">
+                Dica: a TV toca apenas vídeos <b>ativos</b>, na ordem de <b>posição</b> (1,2,3...). Empates usam a data de cadastro.
+              </div>
+              <!-- Filtros de mídia -->
+              <div class="d-flex gap-2 mb-3 align-items-center flex-wrap">
+                <span class="small text-body-secondary me-2">Filtrar:</span>
+                <button id="btnFilterAll" class="btn-action btn-filter-active" type="button">
+                  Todos
+                </button>
+                <button id="btnFilterVideos" class="btn-action" type="button">
+                  Vídeos
+                </button>
+                <button id="btnFilterSlides" class="btn-action" type="button">
+                  Imagens
+                </button>
+              </div>
+              <div class="scart-table">
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle" id="youtubeTable"></table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Seção: Avisos do Rodapé -->
+          <div class="card scart-card">
+            <div class="card-header-gradient">
+              <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                <div>
+                  <div class="scart-section-title text-white">Avisos do Rodapé</div>
+                  <div class="small opacity-75 mt-1">Textos exibidos na TV em sequência.</div>
+                </div>
+                <div class="d-flex gap-2">
+                  <button id="btnRefreshAnnouncements" class="btn-action btn-refresh">Atualizar</button>
+                  <button id="btnOpenAnnouncementModal" class="btn-action btn-new">Novo Aviso</button>
+                </div>
+              </div>
+            </div>
+            <div class="card-body p-4">
+              <div class="alert alert-soft small mb-3">
+                Dica: use mensagens curtas e objetivas. A posição define a ordem de exibição (1, 2, 3...).
+              </div>
+              <div class="scart-table">
+                <div class="table-responsive">
+                  <table class="table table-sm align-middle" id="announcementsTable"></table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    </div><!-- /.main-content -->
+
+    <!-- Footer Innersoft -->
+    <footer class="footer-innersoft">
+      <div class="container-fluid px-4">
+        <div class="d-flex flex-column flex-md-row align-items-center justify-content-between gap-2">
+          <div class="d-flex align-items-center gap-2">
+             <img src="images/innersof_logo.png" alt="Innersoft" class="footer-logo" />
+            <span class="footer-divider d-none d-md-block"></span>
+            <span>Desenvolvido por <a href="https://innersoft.com.br" target="_blank" rel="noopener">Innersoft Tecnologia Ltda</a></span>
+          </div>
+          <div class="text-center text-md-end opacity-75">
+            &copy; 2025 Innersoft Tecnologia Ltda. Todos os direitos reservados.
+          </div>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Área oculta para compatibilidade (panels flag) -->
+    <div id="panels" class="d-none"></div>
+    <div id="loggedHint" class="d-none"></div>
+
+    <!-- YouTube Modal (SCart-style) -->
+    <div class="modal fade" id="youtubeModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modal-padrao-content">
+          <div class="modal-header modal-padrao-header">
+            <div>
+              <div id="ytModalTitle" class="fw-bold" style="font-size:1.15rem;">Novo vídeo</div>
+              <div class="small opacity-75">URL do YouTube + comentário + posição + ativo/inativo.</div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label fw-semibold">Tipo de Mídia</label>
+                <select id="ytMediaType" class="form-select scart-input">
+                  <option value="youtube">Vídeo do YouTube</option>
+                  <option value="slide">Slide/Imagem</option>
+                </select>
+              </div>
+              <!-- YouTube fields -->
+              <div id="ytYouTubeFields" class="col-12">
+                <div class="col-12">
+                  <label class="form-label fw-semibold">URL do YouTube</label>
+                  <input id="ytUrl" class="form-control scart-input" placeholder="https://www.youtube.com/watch?v=..." />
+                </div>
+                <div class="col-12 mt-3">
+                  <div class="alert alert-soft small mb-0">
+                    Ao salvar, o sistema tenta buscar automaticamente o <b>título</b> e a <b>thumbnail</b> (oEmbed).
+                  </div>
+                </div>
+              </div>
+              <!-- Slide fields -->
+              <div id="ytSlideFields" class="col-12" style="display: none;">
+                <div class="col-12">
+                  <label class="form-label fw-semibold">Título do Slide</label>
+                  <input id="ytSlideTitle" class="form-control scart-input" placeholder="Ex.: Slide institucional" />
+                </div>
+                <div class="col-12 mt-3">
+                  <label class="form-label fw-semibold">Imagem do Slide <span class="text-danger">*</span></label>
+                  <input id="ytSlideFile" type="file" accept="image/*" class="form-control scart-input" required />
+                  <div class="form-text small">Faça upload de uma imagem (JPG, PNG, etc.).</div>
+                </div>
+                <div class="col-12 mt-3">
+                  <label class="form-label fw-semibold">Duração (segundos)</label>
+                  <input id="ytSlideDuration" type="number" min="1" class="form-control scart-input" value="10" />
+                  <div class="form-text small">Tempo que o slide ficará exibido na TV.</div>
+                </div>
+                <div id="ytSlidePreview" class="col-12 mt-3" style="display: none;">
+                  <label class="form-label fw-semibold">Preview</label>
+                  <img id="ytSlidePreviewImg" src="" alt="Preview" class="img-fluid rounded border" style="max-height: 200px;" />
+                </div>
+              </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Comentário (opcional)</label>
+                <input id="ytDesc" class="form-control scart-input" placeholder="Ex.: Vídeo institucional / Campanha do mês" />
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold">Posição</label>
+                <input id="ytPos" type="number" min="1" class="form-control scart-input" value="1" />
+              </div>
+              <div class="col-12 col-md-8 d-flex align-items-end">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="ytEnabled" checked>
+                  <label class="form-check-label" for="ytEnabled">Ativo (tocar na TV)</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer p-4 pt-0 border-0 d-flex justify-content-between">
+            <div class="small text-body-secondary">Ordenação: posição ↑, depois data de cadastro.</div>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn-scart-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button id="btnSaveYouTube" type="button" class="btn-scart-primary">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Announcement Modal (SCart-style) -->
+    <div class="modal fade" id="announcementModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modal-padrao-content">
+          <div class="modal-header modal-padrao-header">
+            <div>
+              <div class="fw-bold" style="font-size:1.15rem;">Novo aviso do rodapé</div>
+              <div class="small opacity-75">Será exibido na TV conforme a posição.</div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label fw-semibold">Mensagem</label>
+                <textarea id="annMessage" class="form-control scart-input" rows="3" placeholder="Ex.: Bem-vindo(a)! Atendimento por ordem de chegada."></textarea>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label fw-semibold">Posição</label>
+                <input id="annPos" type="number" min="1" class="form-control scart-input" value="1" />
+              </div>
+              <div class="col-12 col-md-8 d-flex align-items-end">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="annEnabled" checked>
+                  <label class="form-check-label" for="annEnabled">Ativo (exibir na TV)</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer p-4 pt-0 border-0 d-flex justify-content-between">
+            <div class="small text-body-secondary">A ordem é crescente por posição.</div>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn-scart-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button id="btnSaveAnnouncement" type="button" class="btn-scart-primary">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Modal (SCart-style) -->
+    <div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modal-padrao-content">
+          <div class="modal-header modal-padrao-header">
+            <div>
+              <div class="fw-bold" style="font-size:1.15rem;">Novo operador</div>
+              <div class="small opacity-75">Crie um usuário para realizar chamadas.</div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="alert alert-warning small">
+              Antes de confirmar: defina uma senha forte e mantenha o email correto para login.
+            </div>
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold">Email</label>
+                <input id="uEmail" class="form-control scart-input" placeholder="operador@empresa.com.br" />
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold">Nome</label>
+                <input id="uName" class="form-control scart-input" placeholder="Nome do operador" />
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold">Senha</label>
+                <input id="uPass" type="password" class="form-control scart-input" placeholder="mín. 6 caracteres" />
+              </div>
+              <div class="col-12 col-md-6 d-flex align-items-end">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="uActive" checked>
+                  <label class="form-check-label" for="uActive">Ativo</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer p-4 pt-0 border-0 d-flex justify-content-between">
+            <div class="small text-body-secondary">Role será <b>operator</b>.</div>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn-scart-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button id="btnSaveUser" type="button" class="btn-scart-primary">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Counter Modal (SCart-style) -->
+    <div class="modal fade" id="counterModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modal-padrao-content">
+          <div class="modal-header modal-padrao-header">
+            <div>
+              <div class="fw-bold" style="font-size:1.15rem;">Novo guichê</div>
+              <div class="small opacity-75">Cadastre um ponto de atendimento.</div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="row g-3">
+              <div class="col-12 col-md-8">
+                <label class="form-label fw-semibold">Nome</label>
+                <input id="cName" class="form-control scart-input" placeholder="Ex.: Guichê 04" />
+              </div>
+              <div class="col-12 col-md-4 d-flex align-items-end">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="cActive" checked>
+                  <label class="form-check-label" for="cActive">Ativo</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer p-4 pt-0 border-0 d-flex justify-content-between">
+            <div class="small text-body-secondary">Use nomes curtos e padronizados.</div>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn-scart-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button id="btnSaveCounter" type="button" class="btn-scart-primary">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Service Modal (SCart-style) -->
+    <div class="modal fade" id="serviceModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modal-padrao-content">
+          <div class="modal-header modal-padrao-header">
+            <div>
+              <div class="fw-bold" style="font-size:1.15rem;">Novo serviço</div>
+              <div class="small opacity-75">Cadastre o tipo de atendimento.</div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          </div>
+          <div class="modal-body p-4">
+            <div class="row g-3">
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold">Nome</label>
+                <input id="sName" class="form-control scart-input" placeholder="Ex.: Crédito/Cobrança" />
+              </div>
+              <div class="col-12 col-md-6">
+                <label class="form-label fw-semibold">Prioridade</label>
+                <select id="sPriority" class="form-select scart-input">
+                  <option value="normal">Normal</option>
+                  <option value="preferential">Preferencial</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="sActive" checked>
+                  <label class="form-check-label" for="sActive">Ativo</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer p-4 pt-0 border-0 d-flex justify-content-between">
+            <div class="small text-body-secondary">Preferencial pode ser usado para filas prioritárias.</div>
+            <div class="d-flex gap-2">
+              <button type="button" class="btn-scart-secondary" data-bs-dismiss="modal">Cancelar</button>
+              <button id="btnSaveService" type="button" class="btn-scart-primary">Salvar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      const EDGE_BASE = (window.EDGE_BASE || `${window.location.protocol}//${window.location.hostname}:7071`).replace(/\/$/, "");
+      document.getElementById("edgeBase").textContent = EDGE_BASE;
+
+      function setStatus(msg) {
+        document.getElementById("loginStatus").textContent = msg || "";
+      }
+
+      function escapeHtml(str) {
+        return String(str ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      // SweetAlert2 helpers
+      function swalOk(title, text) {
+        return Swal.fire({ icon: "success", title, text, timer: 1400, showConfirmButton: false });
+      }
+      function swalErr(title, text) {
+        return Swal.fire({ icon: "error", title, text, confirmButtonText: "OK" });
+      }
+      function swalConfirm(title, text) {
+        return Swal.fire({ icon: "warning", title, text, showCancelButton: true, confirmButtonText: "Confirmar", cancelButtonText: "Cancelar" });
+      }
+
+      // Visible diagnostics (so "nothing happens" is never silent)
+      setStatus("Tenant validado. Pronto para login.");
+      window.addEventListener("error", (e) => {
+        setStatus(`Erro JS: ${e.message || e.type}`);
+      });
+      window.addEventListener("unhandledrejection", (e) => {
+        setStatus(`Promise rejeitada: ${e.reason?.message || e.reason || "erro"}`);
+      });
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
+      function getToken() {
+        return localStorage.getItem("tenant_token") || "";
+      }
+
+      function setToken(token) {
+        if (token) localStorage.setItem("tenant_token", token);
+        else localStorage.removeItem("tenant_token");
+      }
+
+      function authHeaders() {
+        const t = getToken();
+        return { Authorization: `Bearer ${t}`, "Content-Type": "application/json" };
+      }
+
+      async function api(path, opts = {}) {
+        const res = await fetch(`${EDGE_BASE}${path}`, opts);
+        const txt = await res.text();
+        let data;
+        try { data = JSON.parse(txt); } catch { data = txt; }
+        if (!res.ok) throw new Error(`${res.status}: ${typeof data === "string" ? data : JSON.stringify(data)}`);
+        return data;
+      }
+
+      async function refreshTenant() {
+        const me = await api("/auth/me", { headers: authHeaders() });
+        document.getElementById("tenantCnpj").textContent = me.tenant_cpf_cnpj || "-";
+      }
+
+      function setText(id, v) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = v ?? "-";
+      }
+
+      function fmtShortDt(s) {
+        if (!s) return "-";
+        try {
+          const d = new Date(s);
+          return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+        } catch {
+          return String(s);
+        }
+      }
+
+      async function refreshDashboard() {
+        const d = await api("/tenant/dashboard", { headers: authHeaders() });
+        const t = d.tenant || {};
+        const name = (t.nome_fantasia || t.nome_razao_social || "").trim();
+        setText("tenantName", name || "-");
+        setText("tenantCnpjFull", t.cpf_cnpj || "-");
+        setText("tenantStatus", t.situacao || "-");
+
+        setText("dashCounters", String(d.counters_total ?? "-"));
+        setText("dashServices", String(d.services_total ?? "-"));
+        setText("dashOperators", String(d.operators_total ?? "-"));
+        setText("dashInService", String(d.in_service_last_60m ?? "-"));
+        setText("dashAttendedToday", String(d.tickets_attended_today ?? "-"));
+        setText("dashLastCall", fmtShortDt(d.last_called_at));
+      }
+
+      async function refreshBrandingPreview() {
+        try {
+          const t = await api("/tenant/me", { headers: authHeaders() });
+          const img = document.getElementById("logoPreview");
+          const empty = document.getElementById("logoPreviewEmpty");
+          const mini = document.getElementById("tenantLogoMini");
+          if (t.logo_base64) {
+            img.src = t.logo_base64;
+            img.style.display = "block";
+            empty.style.display = "none";
+            if (mini) { mini.src = t.logo_base64; mini.style.display = "block"; }
+          } else {
+            img.src = "";
+            img.style.display = "none";
+            empty.style.display = "block";
+            if (mini) { mini.src = ""; mini.style.display = "none"; }
+          }
+        } catch {}
+      }
+
+      async function refreshUsers() {
+        const data = await api("/tenant/users", { headers: authHeaders() });
+        renderUsersTable(data);
+      }
+      async function refreshCounters() {
+        const data = await api("/tenant/counters", { headers: authHeaders() });
+        renderCountersTable(data);
+      }
+      async function refreshServices() {
+        const data = await api("/tenant/services", { headers: authHeaders() });
+        renderServicesTable(data);
+      }
+
+      async function refreshAnnouncements() {
+        const data = await api("/tenant/announcements", { headers: authHeaders() });
+        renderAnnouncementsTable(data);
+      }
+
+      // Estado do filtro de playlist (carregado do backend)
+      let ytTableFilter = "all"; // "all", "videos", "slides"
+
+      // Função de filtro
+      function filterYouTubeRows(rows, filterType) {
+        if (!rows || !Array.isArray(rows)) return [];
+        if (filterType === "all") return rows;
+        if (filterType === "videos") return rows.filter(r => (r.media_type || "youtube").toLowerCase() !== "slide");
+        if (filterType === "slides") return rows.filter(r => (r.media_type || "youtube").toLowerCase() === "slide");
+        return rows;
+      }
+
+      // Atualizar estilo dos botões de filtro
+      function updateFilterButtons() {
+        const btnAll = document.getElementById("btnFilterAll");
+        const btnVideos = document.getElementById("btnFilterVideos");
+        const btnSlides = document.getElementById("btnFilterSlides");
+        
+        if (btnAll && btnVideos && btnSlides) {
+          // Remove classe ativa de todos
+          btnAll.classList.remove("btn-filter-active");
+          btnVideos.classList.remove("btn-filter-active");
+          btnSlides.classList.remove("btn-filter-active");
+          
+          // Adiciona classe ativa no botão selecionado
+          if (ytTableFilter === "all") {
+            btnAll.classList.add("btn-filter-active");
+          } else if (ytTableFilter === "videos") {
+            btnVideos.classList.add("btn-filter-active");
+          } else if (ytTableFilter === "slides") {
+            btnSlides.classList.add("btn-filter-active");
+          }
+        }
+      }
+
+      // Carregar preferência do filtro do backend
+      async function loadAdminSettings() {
+        try {
+          const settings = await api("/tenant/admin-settings", { headers: authHeaders() });
+          ytTableFilter = settings.admin_playlist_filter || "all";
+          updateFilterButtons();
+        } catch (e) {
+          console.warn("Failed to load admin settings:", e);
+          ytTableFilter = "all"; // Default
+          updateFilterButtons();
+        }
+      }
+
+      // Salvar preferência do filtro no backend
+      async function saveAdminSettings() {
+        try {
+          await api("/tenant/admin-settings", {
+            method: "POST",
+            headers: authHeaders(),
+            body: JSON.stringify({ admin_playlist_filter: ytTableFilter })
+          });
+        } catch (e) {
+          console.error("Failed to save admin settings:", e);
+        }
+      }
+
+      async function refreshYouTube() {
+        const data = await api("/tenant/youtube", { headers: authHeaders() });
+        renderYouTubeTable(data);
+      }
+
+      // TV Settings state
+      let currentTVSettings = { tv_theme: "dark", tv_audio_enabled: true, tv_video_muted: true, tv_video_paused: false };
+
+      async function refreshTVSettings() {
+        try {
+          const data = await api("/tenant/tv-settings", { headers: authHeaders() });
+          currentTVSettings = data;
+          updateTVSettingsUI();
+        } catch (e) {
+          console.warn("Erro ao carregar configurações TV:", e);
+        }
+      }
+
+      function setToggleState(btnOn, btnOff, isOn) {
+        if (isOn) {
+          btnOn.classList.remove("btn-toggle-off");
+          btnOn.classList.add("btn-toggle-on");
+          btnOff.classList.remove("btn-toggle-on");
+          btnOff.classList.add("btn-toggle-off");
+        } else {
+          btnOff.classList.remove("btn-toggle-off");
+          btnOff.classList.add("btn-toggle-on");
+          btnOn.classList.remove("btn-toggle-on");
+          btnOn.classList.add("btn-toggle-off");
+        }
+      }
+
+      function updateTVSettingsUI() {
+        // Tema
+        setToggleState(
+          document.getElementById("btnThemeDark"),
+          document.getElementById("btnThemeLight"),
+          currentTVSettings.tv_theme === "dark"
+        );
+
+        // Áudio de chamada
+        setToggleState(
+          document.getElementById("btnAudioOn"),
+          document.getElementById("btnAudioOff"),
+          currentTVSettings.tv_audio_enabled
+        );
+
+        // Áudio do vídeo (invertido: muted=true significa som OFF)
+        setToggleState(
+          document.getElementById("btnVideoAudioOn"),
+          document.getElementById("btnVideoAudioOff"),
+          !currentTVSettings.tv_video_muted
+        );
+
+        // Reprodução do vídeo (paused=true significa pausado)
+        setToggleState(
+          document.getElementById("btnVideoPlay"),
+          document.getElementById("btnVideoPause"),
+          !currentTVSettings.tv_video_paused
+        );
+      }
+
+      async function saveTVSettings() {
+        try {
+          await api("/tenant/tv-settings", {
+            method: "POST",
+            headers: authHeaders(),
+            body: JSON.stringify(currentTVSettings),
+          });
+          swalOk("Salvo", "Configurações da TV atualizadas.");
+        } catch (e) {
+          swalErr("Erro", String(e));
+        }
+      }
+
+      function tableClass() {
+        return "table table-sm align-middle";
+      }
+
+      function fmtDt(s) {
+        if (!s) return "";
+        try { return new Date(s).toLocaleString("pt-BR"); } catch { return String(s); }
+      }
+
+      function renderUsersTable(rows) {
+        const el = document.getElementById("usersTable");
+        if (!el) return;
+        const r = rows || [];
+        el.className = tableClass();
+        el.innerHTML = `
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Nome</th>
+              <th>Role</th>
+              <th>Status</th>
+              <th class="text-nowrap">Criado em</th>
+              <th style="width: 180px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${r.map(u => `
+              <tr>
+                <td class="text-nowrap">${escapeHtml(u.email || "")}</td>
+                <td>${escapeHtml(u.full_name || "")}</td>
+                <td>${escapeHtml(u.role || "")}</td>
+                <td>${u.active ? '<span class="badge text-bg-success">ativo</span>' : '<span class="badge text-bg-secondary">inativo</span>'}</td>
+                <td class="text-nowrap">${escapeHtml(fmtDt(u.created_at))}</td>
+                <td class="text-end d-flex gap-1 justify-content-end">
+                  <button class="btn-action ${u.active ? 'btn-toggle-off' : 'btn-toggle-on'}" data-toggle-user="${escapeHtml(u.id || "")}" data-active="${u.active ? '1' : '0'}">${u.active ? 'Desativar' : 'Ativar'}</button>
+                  <button class="btn-action btn-delete" data-del-user="${escapeHtml(u.id || "")}">Excluir</button>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        `;
+      }
+
+      function renderCountersTable(rows) {
+        const el = document.getElementById("countersTable");
+        if (!el) return;
+        const r = rows || [];
+        el.className = tableClass();
+        el.innerHTML = `
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Status</th>
+              <th class="text-nowrap">Criado em</th>
+              <th style="width: 180px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${r.map(c => `
+              <tr>
+                <td class="text-nowrap">${escapeHtml(c.name || "")}</td>
+                <td>${c.active ? '<span class="badge text-bg-success">ativo</span>' : '<span class="badge text-bg-secondary">inativo</span>'}</td>
+                <td class="text-nowrap">${escapeHtml(fmtDt(c.created_at))}</td>
+                <td class="text-end d-flex gap-1 justify-content-end">
+                  <button class="btn-action ${c.active ? 'btn-toggle-off' : 'btn-toggle-on'}" data-toggle-counter="${escapeHtml(c.id || "")}" data-active="${c.active ? '1' : '0'}">${c.active ? 'Desativar' : 'Ativar'}</button>
+                  <button class="btn-action btn-delete" data-del-counter="${escapeHtml(c.id || "")}">Excluir</button>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        `;
+      }
+
+      function renderServicesTable(rows) {
+        const el = document.getElementById("servicesTable");
+        if (!el) return;
+        const r = rows || [];
+        el.className = tableClass();
+        el.innerHTML = `
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Prioridade</th>
+              <th>Status</th>
+              <th class="text-nowrap">Criado em</th>
+              <th style="width: 180px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${r.map(s => `
+              <tr>
+                <td class="text-nowrap">${escapeHtml(s.name || "")}</td>
+                <td>${escapeHtml(s.priority_mode || "")}</td>
+                <td>${s.active ? '<span class="badge text-bg-success">ativo</span>' : '<span class="badge text-bg-secondary">inativo</span>'}</td>
+                <td class="text-nowrap">${escapeHtml(fmtDt(s.created_at))}</td>
+                <td class="text-end d-flex gap-1 justify-content-end">
+                  <button class="btn-action ${s.active ? 'btn-toggle-off' : 'btn-toggle-on'}" data-toggle-service="${escapeHtml(s.id || "")}" data-active="${s.active ? '1' : '0'}">${s.active ? 'Desativar' : 'Ativar'}</button>
+                  <button class="btn-action btn-delete" data-del-service="${escapeHtml(s.id || "")}">Excluir</button>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        `;
+      }
+
+      function renderAnnouncementsTable(rows) {
+        const el = document.getElementById("announcementsTable");
+        if (!el) return;
+        const r = rows || [];
+        el.className = tableClass();
+        el.innerHTML = `
+          <thead>
+            <tr>
+              <th style="width: 70px">Pos</th>
+              <th>Mensagem</th>
+              <th style="width: 110px">Status</th>
+              <th style="width: 180px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${r.map(a => `
+              <tr>
+                <td class="text-nowrap">${escapeHtml(String(a.position ?? ""))}</td>
+                <td>${escapeHtml(a.message || "")}</td>
+                <td>${a.enabled ? '<span class="badge text-bg-success">ativo</span>' : '<span class="badge text-bg-secondary">inativo</span>'}</td>
+                <td class="text-end d-flex gap-1 justify-content-end">
+                  <button class="btn-action ${a.enabled ? 'btn-toggle-off' : 'btn-toggle-on'}" data-toggle-ann="${escapeHtml(a.id || "")}" data-enabled="${a.enabled ? '1' : '0'}">${a.enabled ? 'Desativar' : 'Ativar'}</button>
+                  <button class="btn-action btn-delete" data-del-ann="${escapeHtml(a.id || "")}">Excluir</button>
+                </td>
+              </tr>
+            `).join("")}
+          </tbody>
+        `;
+      }
+
+      function renderYouTubeTable(rows) {
+        const el = document.getElementById("youtubeTable");
+        if (!el) return;
+        // Aplicar filtro antes de renderizar
+        const filtered = filterYouTubeRows(rows || [], ytTableFilter);
+        const r = filtered;
+        el.className = tableClass();
+        el.innerHTML = `
+          <thead>
+            <tr>
+              <th style="width: 70px">Pos</th>
+              <th style="width: 80px">Thumb</th>
+              <th>Tipo</th>
+              <th>Título</th>
+              <th>Comentário</th>
+              <th class="text-nowrap">Criado em</th>
+              <th style="width: 110px">Status</th>
+              <th style="width: 260px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${r.map(v => {
+              const mediaType = (v.media_type || "youtube").toLowerCase();
+              const isSlide = mediaType === "slide";
+              // Para slides: usar image_url diretamente (redimensionado via CSS)
+              // Para vídeos: usar thumbnail_url (do YouTube)
+              const thumbUrl = isSlide 
+                ? (v.image_url || "") 
+                : (v.thumbnail_url || "");
+              return `
+              <tr>
+                <td class="text-nowrap">${escapeHtml(String(v.position ?? ""))}</td>
+                <td>
+                  ${thumbUrl ? `<img src="${escapeHtml(thumbUrl.startsWith('/') ? `${window.location.protocol}//${window.location.hostname}:7071${thumbUrl}` : thumbUrl)}" alt="thumb" style="width:64px;height:36px;object-fit:cover;border-radius:8px;border:1px solid rgba(0,0,0,.08)" />` : `<span class="text-body-secondary small">—</span>`}
+                </td>
+                <td>
+                  ${isSlide ? '<span class="badge text-bg-info">Slide</span>' : '<span class="badge text-bg-danger">YouTube</span>'}
+                </td>
+                <td>
+                  <div class="fw-semibold">${escapeHtml(v.title || "(sem título)")}</div>
+                  ${!isSlide ? `<div class="small text-body-secondary">${escapeHtml(v.author_name || "")}</div>` : ""}
+                </td>
+                <td>${escapeHtml(v.description || "")}</td>
+                <td class="text-nowrap">${escapeHtml(fmtDt(v.created_at))}</td>
+                <td>${v.enabled ? '<span class="badge text-bg-success">ativo</span>' : '<span class="badge text-bg-secondary">inativo</span>'}</td>
+                <td class="text-end d-flex gap-1 justify-content-end flex-nowrap" style="white-space:nowrap;">
+                  <button class="btn-action btn-refresh" data-edit-yt="${escapeHtml(v.id || "")}">Editar</button>
+                  <button class="btn-action ${v.enabled ? 'btn-toggle-off' : 'btn-toggle-on'}" data-toggle-yt="${escapeHtml(v.id || "")}" data-enabled="${v.enabled ? '1' : '0'}">${v.enabled ? 'Desativar' : 'Ativar'}</button>
+                  <button class="btn-action btn-delete" data-del-yt="${escapeHtml(v.id || "")}">Excluir</button>
+                </td>
+              </tr>
+            `;
+            }).join("")}
+          </tbody>
+        `;
+      }
+
+      async function afterLogin() {
+        // hide modal if open
+        try {
+          const el = document.getElementById("loginModal");
+          const inst = bootstrap.Modal.getInstance(el);
+          if (inst) inst.hide();
+        } catch {}
+
+        // Carregar preferências do admin (incluindo filtro de playlist)
+        await loadAdminSettings();
+
+        // Mostrar botões de logout
+        document.getElementById("btnLogout").classList.remove("d-none");
+        document.getElementById("btnLogoutTop").classList.remove("d-none");
+
+        // Mostrar área de abas (container principal já visível, apenas habilita interação)
+        const tabsNav = document.getElementById("adminTabs");
+        const tabsContent = document.getElementById("adminTabsContent");
+        tabsNav.style.pointerEvents = "auto";
+        tabsNav.style.opacity = "1";
+        tabsContent.style.opacity = "1";
+        tabsContent.style.pointerEvents = "auto";
+
+        setStatus("Autenticado.");
+        await refreshTenant();
+        await Promise.all([refreshDashboard(), refreshUsers(), refreshCounters(), refreshServices(), refreshBrandingPreview(), refreshAnnouncements(), refreshTVSettings(), refreshYouTube()]);
+      }
+
+      document.getElementById("btnLogin").addEventListener("click", async () => {
+        try {
+          setStatus("Entrando...");
+          const payload = {
+            email: document.getElementById("email").value,
+            password: document.getElementById("password").value,
+          };
+          const data = await api("/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+          setToken(data.access_token);
+          await afterLogin();
+          swalOk("Login OK", "Bem-vindo!");
+        } catch (e) {
+          setStatus(`Falha no login: ${String(e)}`);
+          swalErr("Falha no login", String(e));
+        }
+      });
+
+      document.getElementById("btnLogout").addEventListener("click", () => {
+        setToken("");
+        location.reload();
+      });
+      document.getElementById("btnLogoutTop").addEventListener("click", () => {
+        setToken("");
+        location.reload();
+      });
+
+      // Theme toggle (Bootstrap color mode)
+      const themeBtn = document.getElementById("themeToggle");
+      const themeBtnModal = document.getElementById("themeToggleInModal");
+      function getTheme() { return localStorage.getItem("admin_theme") || "dark"; }
+      function setTheme(v) { localStorage.setItem("admin_theme", v); document.documentElement.setAttribute("data-bs-theme", v); themeBtn.textContent = v === "dark" ? "Light" : "Dark"; }
+      setTheme(getTheme());
+      if (themeBtnModal) themeBtnModal.textContent = themeBtn.textContent;
+      themeBtn.addEventListener("click", () => {
+        setTheme(getTheme() === "dark" ? "light" : "dark");
+        refreshUsers(); refreshCounters(); refreshServices(); refreshAnnouncements();
+        if (themeBtnModal) themeBtnModal.textContent = themeBtn.textContent;
+      });
+      if (themeBtnModal) {
+        themeBtnModal.addEventListener("click", () => {
+          themeBtn.click();
+        });
+      }
+
+      document.getElementById("btnRefreshUsers").addEventListener("click", refreshUsers);
+      document.getElementById("btnRefreshCounters").addEventListener("click", refreshCounters);
+      document.getElementById("btnRefreshServices").addEventListener("click", refreshServices);
+      document.getElementById("btnRefreshAnnouncements").addEventListener("click", refreshAnnouncements);
+      document.getElementById("btnRefreshYouTube").addEventListener("click", refreshYouTube);
+
+      // Event listeners para botões de filtro de playlist
+      document.getElementById("btnFilterAll")?.addEventListener("click", async () => {
+        ytTableFilter = "all";
+        updateFilterButtons();
+        await saveAdminSettings();
+        refreshYouTube();
+      });
+
+      document.getElementById("btnFilterVideos")?.addEventListener("click", async () => {
+        ytTableFilter = "videos";
+        updateFilterButtons();
+        await saveAdminSettings();
+        refreshYouTube();
+      });
+
+      document.getElementById("btnFilterSlides")?.addEventListener("click", async () => {
+        ytTableFilter = "slides";
+        updateFilterButtons();
+        await saveAdminSettings();
+        refreshYouTube();
+      });
+
+      // Users/Counters/Services modals (SCart-style)
+      const userModal = new bootstrap.Modal(document.getElementById("userModal"));
+      const counterModal = new bootstrap.Modal(document.getElementById("counterModal"));
+      const serviceModal = new bootstrap.Modal(document.getElementById("serviceModal"));
+      const youtubeModal = new bootstrap.Modal(document.getElementById("youtubeModal"));
+
+      let ytEditingId = null;
+      
+      function toggleMediaTypeFields() {
+        const mediaType = document.getElementById("ytMediaType").value;
+        const isSlide = mediaType === "slide";
+        document.getElementById("ytYouTubeFields").style.display = isSlide ? "none" : "block";
+        document.getElementById("ytSlideFields").style.display = isSlide ? "block" : "none";
+      }
+      
+      function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+      
+      document.getElementById("ytMediaType").addEventListener("change", toggleMediaTypeFields);
+      document.getElementById("ytSlideFile").addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) {
+          document.getElementById("ytSlidePreview").style.display = "none";
+          return;
+        }
+        try {
+          const base64 = await fileToBase64(file);
+          document.getElementById("ytSlidePreviewImg").src = base64;
+          document.getElementById("ytSlidePreview").style.display = "block";
+        } catch (e) {
+          console.error("Error reading file:", e);
+          swalErr("Erro", "Não foi possível ler o arquivo selecionado.");
+        }
+      });
+      
+      async function openYouTubeModalForNew() {
+        ytEditingId = null;
+        document.getElementById("ytModalTitle").textContent = "Novo item da playlist";
+        document.getElementById("ytMediaType").value = "youtube";
+        document.getElementById("ytUrl").value = "";
+        document.getElementById("ytDesc").value = "";
+        document.getElementById("ytPos").value = "1";
+        document.getElementById("ytEnabled").checked = true;
+        document.getElementById("ytSlideTitle").value = "";
+        document.getElementById("ytSlideFile").value = "";
+        document.getElementById("ytSlideDuration").value = "10";
+        document.getElementById("ytSlidePreview").style.display = "none";
+        toggleMediaTypeFields();
+        youtubeModal.show();
+      }
+
+      async function openYouTubeModalForEdit(id) {
+        ytEditingId = id;
+        document.getElementById("ytModalTitle").textContent = "Editar item da playlist";
+        const rows = await api("/tenant/youtube", { headers: authHeaders() });
+        const v = (rows || []).find(x => x.id === id);
+        if (!v) throw new Error("Item não encontrado");
+        
+        const mediaType = (v.media_type || "youtube").toLowerCase();
+        document.getElementById("ytMediaType").value = mediaType;
+        document.getElementById("ytDesc").value = v.description || "";
+        document.getElementById("ytPos").value = String(v.position ?? 1);
+        document.getElementById("ytEnabled").checked = !!v.enabled;
+        
+        if (mediaType === "slide") {
+          document.getElementById("ytSlideTitle").value = v.title || "";
+          document.getElementById("ytSlideFile").value = ""; // File input cannot be pre-filled
+          document.getElementById("ytSlideDuration").value = String(v.slide_duration_seconds || 10);
+          if (v.image_url) {
+            const imgUrl = v.image_url.startsWith("/") ? `${window.location.protocol}//${window.location.hostname}:7071${v.image_url}` : v.image_url;
+            document.getElementById("ytSlidePreviewImg").src = imgUrl;
+            document.getElementById("ytSlidePreview").style.display = "block";
+          }
+        } else {
+          document.getElementById("ytUrl").value = v.url || "";
+        }
+        
+        toggleMediaTypeFields();
+        youtubeModal.show();
+      }
+
+      document.getElementById("btnOpenYouTubeModal").addEventListener("click", () => {
+        openYouTubeModalForNew().catch(e => swalErr("Erro", String(e)));
+      });
+
+      document.getElementById("btnSaveYouTube").addEventListener("click", async () => {
+        try {
+          const mediaType = document.getElementById("ytMediaType").value;
+          const payload = {
+            media_type: mediaType,
+            description: document.getElementById("ytDesc").value,
+            position: Number(document.getElementById("ytPos").value || "1"),
+            enabled: document.getElementById("ytEnabled").checked,
+          };
+          
+          if (mediaType === "youtube") {
+            payload.url = document.getElementById("ytUrl").value;
+            payload.refetch_metadata = true;
+            if (!payload.url || !payload.url.trim()) throw new Error("Informe a URL do YouTube.");
+          } else {
+            // Slide
+            payload.title = document.getElementById("ytSlideTitle").value || "Slide";
+            payload.slide_duration_seconds = Number(document.getElementById("ytSlideDuration").value || "10");
+            
+            const fileInput = document.getElementById("ytSlideFile");
+            
+            if (fileInput.files && fileInput.files.length > 0) {
+              // Upload file as base64
+              payload.image_base64 = await fileToBase64(fileInput.files[0]);
+            } else {
+              if (ytEditingId) {
+                // Editing: allow keeping existing image (no new file selected)
+                // Don't send image_base64 or image_url, backend will keep existing
+              } else {
+                throw new Error("Selecione uma imagem para o slide.");
+              }
+            }
+          }
+
+          if (ytEditingId) {
+            await api(`/tenant/youtube/${ytEditingId}`, { method: "PUT", headers: authHeaders(), body: JSON.stringify(payload) });
+            swalOk("Salvo", "Item atualizado.");
+          } else {
+            await api("/tenant/youtube", { method: "POST", headers: authHeaders(), body: JSON.stringify(payload) });
+            swalOk("Salvo", "Item cadastrado.");
+          }
+
+          try { youtubeModal.hide(); } catch {}
+          await refreshYouTube();
+        } catch (e) {
+          swalErr("Erro", String(e));
+        }
+      });
+
+      document.body.addEventListener("click", async (ev) => {
+        const t = ev.target;
+        if (!(t instanceof HTMLElement)) return;
+
+        const editId = t.getAttribute("data-edit-yt");
+        if (editId) {
+          try { await openYouTubeModalForEdit(editId); } catch (e) { swalErr("Erro", String(e)); }
+          return;
+        }
+
+        const delId = t.getAttribute("data-del-yt");
+        if (delId) {
+          const ok = await swalConfirm("Excluir vídeo?", "Esta ação remove o vídeo da playlist.");
+          if (!ok.isConfirmed) return;
+          try {
+            await api(`/tenant/youtube/${delId}`, { method: "DELETE", headers: authHeaders() });
+            swalOk("Excluído", "Vídeo removido.");
+            await refreshYouTube();
+          } catch (e) {
+            swalErr("Erro", String(e));
+          }
+          return;
+        }
+
+        const togId = t.getAttribute("data-toggle-yt");
+        if (togId) {
+          const curEnabled = t.getAttribute("data-enabled") === "1";
+          const newEnabled = !curEnabled;
+          try {
+            await api(`/tenant/youtube/${togId}/toggle`, { method: "POST", headers: authHeaders(), body: JSON.stringify({ enabled: newEnabled }) });
+            await refreshYouTube();
+          } catch (e) {
+            swalErr("Erro", String(e));
+          }
+          return;
+        }
+      });
+
+
+      document.getElementById("btnOpenUserModal").addEventListener("click", () => {
+        document.getElementById("uEmail").value = "";
+        document.getElementById("uName").value = "";
+        document.getElementById("uPass").value = "";
+        document.getElementById("uActive").checked = true;
+        userModal.show();
+      });
+      document.getElementById("btnSaveUser").addEventListener("click", async () => {
+        const payload = {
+          email: document.getElementById("uEmail").value,
+          full_name: document.getElementById("uName").value,
+          password: document.getElementById("uPass").value,
+          role: "operator",
+          active: Boolean(document.getElementById("uActive").checked),
+        };
+        if (!String(payload.email || "").trim() || !String(payload.password || "").trim()) {
+          swalErr("Operador", "Email e senha são obrigatórios.");
+          return;
+        }
+        await api("/tenant/users", { method: "POST", headers: authHeaders(), body: JSON.stringify(payload) });
+        userModal.hide();
+        await refreshUsers();
+        swalOk("Operador criado", "Usuário cadastrado.");
+      });
+
+      document.getElementById("btnOpenCounterModal").addEventListener("click", () => {
+        document.getElementById("cName").value = "";
+        document.getElementById("cActive").checked = true;
+        counterModal.show();
+      });
+      document.getElementById("btnSaveCounter").addEventListener("click", async () => {
+        const payload = {
+          name: document.getElementById("cName").value,
+          active: Boolean(document.getElementById("cActive").checked),
+        };
+        if (!String(payload.name || "").trim()) {
+          swalErr("Guichê", "Informe o nome.");
+          return;
+        }
+        await api("/tenant/counters", { method: "POST", headers: authHeaders(), body: JSON.stringify(payload) });
+        counterModal.hide();
+        await refreshCounters();
+        swalOk("Guichê criado", "Guichê cadastrado.");
+      });
+
+      document.getElementById("btnOpenServiceModal").addEventListener("click", () => {
+        document.getElementById("sName").value = "";
+        document.getElementById("sPriority").value = "normal";
+        document.getElementById("sActive").checked = true;
+        serviceModal.show();
+      });
+      document.getElementById("btnSaveService").addEventListener("click", async () => {
+        const payload = {
+          name: document.getElementById("sName").value,
+          priority_mode: document.getElementById("sPriority").value,
+          active: Boolean(document.getElementById("sActive").checked),
+        };
+        if (!String(payload.name || "").trim()) {
+          swalErr("Serviço", "Informe o nome.");
+          return;
+        }
+        await api("/tenant/services", { method: "POST", headers: authHeaders(), body: JSON.stringify(payload) });
+        serviceModal.hide();
+        await refreshServices();
+        swalOk("Serviço criado", "Serviço cadastrado.");
+      });
+
+      // Announcements modal (SCart-style)
+      const annModalEl = document.getElementById("announcementModal");
+      const annModal = new bootstrap.Modal(annModalEl);
+      document.getElementById("btnOpenAnnouncementModal").addEventListener("click", () => {
+        document.getElementById("annMessage").value = "";
+        document.getElementById("annPos").value = "1";
+        document.getElementById("annEnabled").checked = true;
+        annModal.show();
+      });
+      document.getElementById("btnSaveAnnouncement").addEventListener("click", async () => {
+        const payload = {
+          message: document.getElementById("annMessage").value,
+          position: Number(document.getElementById("annPos").value || 1),
+          enabled: Boolean(document.getElementById("annEnabled").checked),
+        };
+        if (!payload.message.trim()) {
+          swalErr("Aviso", "Digite uma mensagem.");
+          return;
+        }
+        await api("/tenant/announcements", { method: "POST", headers: authHeaders(), body: JSON.stringify(payload) });
+        annModal.hide();
+        await refreshAnnouncements();
+        swalOk("Aviso salvo", "Vai aparecer na TV em sequência.");
+      });
+
+      // TV Settings buttons
+      document.getElementById("btnRefreshTVSettings").addEventListener("click", refreshTVSettings);
+      document.getElementById("btnThemeDark").addEventListener("click", async () => {
+        currentTVSettings.tv_theme = "dark";
+        updateTVSettingsUI();
+        await saveTVSettings();
+      });
+      document.getElementById("btnThemeLight").addEventListener("click", async () => {
+        currentTVSettings.tv_theme = "light";
+        updateTVSettingsUI();
+        await saveTVSettings();
+      });
+      document.getElementById("btnAudioOn").addEventListener("click", async () => {
+        currentTVSettings.tv_audio_enabled = true;
+        updateTVSettingsUI();
+        await saveTVSettings();
+      });
+      document.getElementById("btnAudioOff").addEventListener("click", async () => {
+        currentTVSettings.tv_audio_enabled = false;
+        updateTVSettingsUI();
+        await saveTVSettings();
+      });
+      document.getElementById("btnVideoAudioOn").addEventListener("click", async () => {
+        currentTVSettings.tv_video_muted = false;
+        updateTVSettingsUI();
+        await saveTVSettings();
+      });
+      document.getElementById("btnVideoAudioOff").addEventListener("click", async () => {
+        currentTVSettings.tv_video_muted = true;
+        updateTVSettingsUI();
+        await saveTVSettings();
+      });
+      document.getElementById("btnVideoPlay").addEventListener("click", async () => {
+        currentTVSettings.tv_video_paused = false;
+        updateTVSettingsUI();
+        await saveTVSettings();
+      });
+      document.getElementById("btnVideoPause").addEventListener("click", async () => {
+        currentTVSettings.tv_video_paused = true;
+        updateTVSettingsUI();
+        await saveTVSettings();
+      });
+
+      // Branding upload (logo)
+      function fileToDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const r = new FileReader();
+          r.onerror = () => reject(new Error("Falha ao ler arquivo"));
+          r.onload = () => resolve(String(r.result || ""));
+          r.readAsDataURL(file);
+        });
+      }
+      document.getElementById("logoFile").addEventListener("change", async (ev) => {
+        const f = ev.target.files && ev.target.files[0];
+        if (!f) return;
+        const img = document.getElementById("logoPreview");
+        const empty = document.getElementById("logoPreviewEmpty");
+        const dataUrl = await fileToDataUrl(f);
+        img.src = dataUrl;
+        img.style.display = "block";
+        empty.style.display = "none";
+      });
+      document.getElementById("btnUploadLogo").addEventListener("click", async () => {
+        const input = document.getElementById("logoFile");
+        const f = input.files && input.files[0];
+        if (!f) { swalErr("Logo", "Selecione um arquivo primeiro."); return; }
+        const dataUrl = await fileToDataUrl(f);
+        await api("/tenant/logo", { method: "POST", headers: authHeaders(), body: JSON.stringify({ logo_base64: dataUrl }) });
+        swalOk("Logo salva", "A TV vai atualizar no próximo refresh/poll.");
+        await refreshBrandingPreview();
+      });
+      document.getElementById("btnClearLogo").addEventListener("click", async () => {
+        const ok = await swalConfirm("Remover logo?", "A TV voltará a usar o fallback.");
+        if (!ok.isConfirmed) return;
+        await api("/tenant/logo", { method: "POST", headers: authHeaders(), body: JSON.stringify({ logo_base64: "data:," }) });
+        await refreshBrandingPreview();
+        swalOk("Logo removida", "Fallback será usado.");
+      });
+
+      // Delete announcement (event delegation)
+      document.addEventListener("click", async (ev) => {
+        const btn = ev.target?.closest?.("[data-del-ann]");
+        if (!btn) return;
+        const id = btn.getAttribute("data-del-ann");
+        const ok = await swalConfirm("Excluir aviso?", "Essa ação remove o aviso do rodapé.");
+        if (!ok.isConfirmed) return;
+        await api("/tenant/announcements/delete", { method: "POST", headers: authHeaders(), body: JSON.stringify({ id }) });
+        await refreshAnnouncements();
+        swalOk("Excluído", "Aviso removido.");
+      });
+
+      // Delete user/counter/service (event delegation)
+      document.addEventListener("click", async (ev) => {
+        const u = ev.target?.closest?.("[data-del-user]");
+        if (u) {
+          const id = u.getAttribute("data-del-user");
+          const ok = await swalConfirm("Excluir operador?", "Essa ação remove o operador do tenant.");
+          if (!ok.isConfirmed) return;
+          await api("/tenant/users/delete", { method: "POST", headers: authHeaders(), body: JSON.stringify({ id }) });
+          await refreshUsers();
+          swalOk("Excluído", "Operador removido.");
+          return;
+        }
+        const c = ev.target?.closest?.("[data-del-counter]");
+        if (c) {
+          const id = c.getAttribute("data-del-counter");
+          const ok = await swalConfirm("Excluir guichê?", "Essa ação remove o guichê do tenant.");
+          if (!ok.isConfirmed) return;
+          await api("/tenant/counters/delete", { method: "POST", headers: authHeaders(), body: JSON.stringify({ id }) });
+          await refreshCounters();
+          swalOk("Excluído", "Guichê removido.");
+          return;
+        }
+        const s = ev.target?.closest?.("[data-del-service]");
+        if (s) {
+          const id = s.getAttribute("data-del-service");
+          const ok = await swalConfirm("Excluir serviço?", "Essa ação remove o serviço do tenant.");
+          if (!ok.isConfirmed) return;
+          await api("/tenant/services/delete", { method: "POST", headers: authHeaders(), body: JSON.stringify({ id }) });
+          await refreshServices();
+          swalOk("Excluído", "Serviço removido.");
+        }
+      });
+
+      // Toggle user/counter/service/announcement (event delegation)
+      document.addEventListener("click", async (ev) => {
+        // Toggle user
+        const tu = ev.target?.closest?.("[data-toggle-user]");
+        if (tu) {
+          const id = tu.getAttribute("data-toggle-user");
+          const isActive = tu.getAttribute("data-active") === "1";
+          const newActive = !isActive;
+          await api("/tenant/users/toggle", { method: "POST", headers: authHeaders(), body: JSON.stringify({ id, active: newActive }) });
+          await refreshUsers();
+          swalOk(newActive ? "Ativado" : "Desativado", `Operador ${newActive ? "ativado" : "desativado"}.`);
+          return;
+        }
+        // Toggle counter
+        const tc = ev.target?.closest?.("[data-toggle-counter]");
+        if (tc) {
+          const id = tc.getAttribute("data-toggle-counter");
+          const isActive = tc.getAttribute("data-active") === "1";
+          const newActive = !isActive;
+          await api("/tenant/counters/toggle", { method: "POST", headers: authHeaders(), body: JSON.stringify({ id, active: newActive }) });
+          await refreshCounters();
+          swalOk(newActive ? "Ativado" : "Desativado", `Guichê ${newActive ? "ativado" : "desativado"}.`);
+          return;
+        }
+        // Toggle service
+        const ts = ev.target?.closest?.("[data-toggle-service]");
+        if (ts) {
+          const id = ts.getAttribute("data-toggle-service");
+          const isActive = ts.getAttribute("data-active") === "1";
+          const newActive = !isActive;
+          await api("/tenant/services/toggle", { method: "POST", headers: authHeaders(), body: JSON.stringify({ id, active: newActive }) });
+          await refreshServices();
+          swalOk(newActive ? "Ativado" : "Desativado", `Serviço ${newActive ? "ativado" : "desativado"}.`);
+          return;
+        }
+        // Toggle announcement
+        const ta = ev.target?.closest?.("[data-toggle-ann]");
+        if (ta) {
+          const id = ta.getAttribute("data-toggle-ann");
+          const isEnabled = ta.getAttribute("data-enabled") === "1";
+          const newEnabled = !isEnabled;
+          await api("/tenant/announcements/toggle", { method: "POST", headers: authHeaders(), body: JSON.stringify({ id, enabled: newEnabled }) });
+          await refreshAnnouncements();
+          swalOk(newEnabled ? "Ativado" : "Desativado", `Aviso ${newEnabled ? "ativado" : "desativado"}.`);
+          return;
+        }
+      });
+
+      // Auto-login if token exists
+      (async () => {
+        const t = getToken();
+        const modalEl = document.getElementById("loginModal");
+        const loginModal = new bootstrap.Modal(modalEl, { backdrop: "static", keyboard: false });
+        if (!t) {
+          loginModal.show();
+          return;
+        }
+        try {
+          await afterLogin();
+        } catch {
+          setToken("");
+          loginModal.show();
+        }
+      })();
+
+      // Periodic dashboard refresh (while authenticated)
+      setInterval(() => {
+        if (!getToken()) return;
+        refreshDashboard().catch(() => {});
+      }, 30_000);
+    </script>
+  </body>
+</html>
+

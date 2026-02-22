@@ -1,0 +1,20 @@
+#!/bin/bash
+# Incrementa .version (patch) a cada commit e inclui no stage.
+set -e
+ROOT="$(git rev-parse --show-toplevel)"
+VF="${ROOT}/.version"
+[ -f "$VF" ] || echo "1.0.0" > "$VF"
+v=$(cat "$VF" | tr -d '[:space:]')
+# Suporte a major.minor.patch (incrementa patch)
+if [[ "$v" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+  major="${BASH_REMATCH[1]}"
+  minor="${BASH_REMATCH[2]}"
+  patch="${BASH_REMATCH[3]}"
+  patch=$((patch + 1))
+  new_v="${major}.${minor}.${patch}"
+else
+  new_v="1.0.0"
+fi
+echo "$new_v" > "$VF"
+git add "$VF"
+exit 0

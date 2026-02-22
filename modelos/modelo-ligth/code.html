@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html class="dark" lang="pt-br"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Painel de Senhas - Varejo Dark Mode</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00d4ff",
+                        "accent": "#ffd700",
+                        "background-dark": "#0a0e14",
+                        "surface-dark": "#161b22",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend"]
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        body {
+            font-family: 'Lexend', sans-serif;
+            overflow: hidden;
+            background-color: #0a0e14;
+        }
+        .glass-panel {
+            background: rgba(22, 27, 34, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .marquee-container {
+            overflow: hidden;
+            white-space: nowrap;
+        }
+        .marquee-content {
+            display: inline-block;
+            animation: scroll 40s linear infinite;
+        }
+        @keyframes scroll {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        .pulse-border {
+            box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.4);
+            animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(0, 212, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0); }
+        }
+    </style>
+</head>
+<body class="text-white font-display">
+<div class="flex flex-col h-screen w-full p-4 lg:p-6 gap-4 lg:gap-6 aspect-video">
+<header class="flex items-center justify-between px-8 py-4 bg-surface-dark/80 rounded-2xl border border-white/10 shadow-2xl">
+<div class="flex items-center gap-5">
+<div class="size-12 text-primary">
+<svg fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path clip-rule="evenodd" d="M24 4H42V17.3333V30.6667H24V44H6V30.6667V17.3333H24V4Z" fill="currentColor" fill-rule="evenodd"></path>
+</svg>
+</div>
+<div>
+<h1 class="text-2xl font-black tracking-tight uppercase">Home Center</h1>
+<p class="text-[10px] text-primary font-bold tracking-[0.3em] uppercase">Gestão de Atendimento</p>
+</div>
+</div>
+<div class="flex items-center gap-8">
+<div class="flex flex-col items-end">
+<p class="text-4xl font-black tracking-tighter text-white" id="clock">15:30</p>
+<p class="text-xs text-primary/70 font-bold tracking-widest uppercase">24 de Outubro, 2023</p>
+</div>
+<div class="h-12 w-[2px] bg-white/10"></div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-xl size-14 border border-white/20" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCsMom1HEzJCefuueScF6LxkS6cl1bKc3Ue9WS38BjZujEm9bpBzShQZvf11Qpua8niDMkXnk3VqdDxkb-qLS2tnMBLUdB-4gFwl2-y55jh2o9n5xODE9zsLiqef2z1MKxqnkzQPsMa7LFoAqhupZ7eB88ek1MjgczeK_vrmtCx39tUQilbI-12puK-YpaQmRU50LQbCPvHB7Yksw6lHcuKOJTb_FPNySEnN31aJCH2-EUgBIHfZddwgFIuvp1t0nCs92OzeBeSg5k");'></div>
+</div>
+</header>
+<main class="flex flex-1 gap-4 lg:gap-6 overflow-hidden">
+<div class="flex-[3] flex flex-col gap-4 lg:gap-6">
+<div class="flex flex-col items-center justify-center bg-primary/5 border-2 border-primary/40 rounded-3xl p-8 relative overflow-hidden pulse-border">
+<div class="absolute top-6 left-8 flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-3xl">notifications_active</span>
+<span class="text-sm font-black tracking-[0.3em] uppercase text-primary">SENHA ATUAL</span>
+</div>
+<div class="flex flex-col items-center gap-4 py-4">
+<h2 class="text-[14rem] font-black leading-none tracking-tighter text-white drop-shadow-[0_0_30px_rgba(0,212,255,0.3)]">A-102</h2>
+<div class="flex gap-4">
+<div class="px-10 py-4 bg-primary text-background-dark rounded-2xl font-black text-4xl uppercase tracking-tighter shadow-lg shadow-primary/20">
+                                GUICHÊ 04
+                            </div>
+</div>
+</div>
+<div class="absolute bottom-6 right-8">
+<div class="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10">
+<span class="size-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-[10px] font-bold uppercase tracking-widest text-white/60">Chamando...</span>
+</div>
+</div>
+</div>
+<div class="flex-1 relative bg-black rounded-3xl overflow-hidden border border-white/10 group">
+<div class="absolute inset-0 bg-cover bg-center opacity-60 transition-transform duration-700 group-hover:scale-105" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAUAMtJkyXF9AeSGfJ4gq1cHMD-QOPq_dzx4Q4dz2YMooq0QbcNw3QchASjzdD-wEQo_WXwMHb3AgOf3XLZwXNpWl_K3mw1wMhFLRi82ZuSCC2E9rN5eW8D6m_6cLVB0vkC6O-bH7R8Iqfqj7rRSrofb69vuxvB0CswYXSwtsmpOhsOfY1OSqXspU6jsKq6GtYoEVpubb_lsvBoYq324P2UqKRHn1Od5TL-LjYpKpKEmMCc-So_ieM-gw-rrphc6UEiBsG_2C0sI7A");'></div>
+<div class="absolute inset-0 bg-gradient-to-t from-background-dark via-transparent to-transparent"></div>
+<div class="absolute bottom-0 left-0 right-0 p-10 flex justify-between items-end">
+<div class="max-w-xl">
+<span class="inline-block px-4 py-1.5 bg-accent text-background-dark text-xs font-black uppercase rounded-lg mb-4">Oferta Especial</span>
+<h3 class="text-4xl font-bold leading-tight text-white mb-2">Coleção Living Moderno</h3>
+<p class="text-white/70 text-lg">Até 40% de desconto em sofás de design neste fim de semana. Visite o Corredor 12.</p>
+</div>
+<div class="size-20 rounded-full bg-white/10 backdrop-blur-xl flex items-center justify-center border border-white/20 shadow-2xl">
+<span class="material-symbols-outlined text-white text-5xl">play_circle</span>
+</div>
+</div>
+</div>
+</div>
+<aside class="flex-1 glass-panel rounded-3xl flex flex-col overflow-hidden shadow-2xl border border-white/10">
+<div class="p-6 bg-white/5 border-b border-white/10">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-accent text-3xl">history</span>
+<h4 class="text-xl font-bold tracking-tight">Últimas Senhas</h4>
+</div>
+<span class="text-[10px] font-black uppercase text-accent tracking-[0.2em] bg-accent/10 px-3 py-1.5 rounded-lg border border-accent/20">HISTÓRICO</span>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto px-6 py-4 flex flex-col gap-4">
+<div class="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/5 hover:border-primary/50 transition-all cursor-default">
+<div class="flex flex-col">
+<span class="text-3xl font-black text-accent tracking-tighter">B-098</span>
+<span class="text-xs uppercase font-bold text-white/50">GUICHÊ 01</span>
+</div>
+<div class="text-right">
+<span class="text-xs font-bold text-white/30">HÁ 2 MIN</span>
+</div>
+</div>
+<div class="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/5 opacity-80">
+<div class="flex flex-col">
+<span class="text-3xl font-black text-white tracking-tighter">A-101</span>
+<span class="text-xs uppercase font-bold text-white/50">GUICHÊ 03</span>
+</div>
+<div class="text-right">
+<span class="text-xs font-bold text-white/30">HÁ 5 MIN</span>
+</div>
+</div>
+<div class="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/5 opacity-60">
+<div class="flex flex-col">
+<span class="text-3xl font-black text-white tracking-tighter">C-045</span>
+<span class="text-xs uppercase font-bold text-white/50">GUICHÊ 02</span>
+</div>
+<div class="text-right">
+<span class="text-xs font-bold text-white/30">HÁ 8 MIN</span>
+</div>
+</div>
+<div class="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/5 opacity-40">
+<div class="flex flex-col">
+<span class="text-3xl font-black text-white tracking-tighter">A-100</span>
+<span class="text-xs uppercase font-bold text-white/50">GUICHÊ 05</span>
+</div>
+<div class="text-right">
+<span class="text-xs font-bold text-white/30">HÁ 12 MIN</span>
+</div>
+</div>
+<div class="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/5 opacity-30">
+<div class="flex flex-col">
+<span class="text-3xl font-black text-white tracking-tighter">B-097</span>
+<span class="text-xs uppercase font-bold text-white/50">GUICHÊ 01</span>
+</div>
+<div class="text-right">
+<span class="text-xs font-bold text-white/30">HÁ 15 MIN</span>
+</div>
+</div>
+</div>
+<div class="p-6 bg-primary/10 mt-auto">
+<div class="flex items-start gap-4">
+<span class="material-symbols-outlined text-primary">info</span>
+<p class="text-xs leading-relaxed font-medium text-white/80">
+                            Por favor, tenha em mãos seu documento de identidade e o comprovante de compra para agilizar seu atendimento.
+                        </p>
+</div>
+</div>
+</aside>
+</main>
+<footer class="h-20 bg-surface-dark border-t border-white/10 flex items-center overflow-hidden rounded-2xl shadow-2xl">
+<div class="bg-primary h-full px-10 flex items-center z-20 shadow-[10px_0_20px_rgba(0,0,0,0.5)]">
+<span class="text-background-dark font-black uppercase tracking-[0.2em] whitespace-nowrap text-lg">AVISOS E OFERTAS</span>
+</div>
+<div class="flex-1 marquee-container">
+<div class="marquee-content flex items-center gap-24">
+<p class="text-xl font-bold text-white flex items-center gap-3">
+<span class="material-symbols-outlined text-accent">stars</span>
+                        FAÇA PARTE DO NOSSO PROGRAMA DE FIDELIDADE E GANHE 10% DE DESCONTO NA PRÓXIMA COMPRA!
+                    </p>
+<p class="text-xl font-bold text-white flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">local_shipping</span>
+                        ENTREGA GRÁTIS PARA COMPRAS ACIMA DE R$ 1.500,00 EM TODA A REGIÃO METROPOLITANA.
+                    </p>
+<p class="text-xl font-bold text-white flex items-center gap-3">
+<span class="material-symbols-outlined text-accent">schedule</span>
+                        HORÁRIO DE ATENDIMENTO: SEGUNDA A SÁBADO DAS 08:00 ÀS 22:00. DOMINGOS ATÉ ÀS 20:00.
+                    </p>
+<p class="text-xl font-bold text-white flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">handyman</span>
+                        CONSULTE NOSSOS SERVIÇOS DE INSTALAÇÃO NO BALCÃO DE ATENDIMENTO AO CLIENTE.
+                    </p>
+</div>
+</div>
+</footer>
+</div>
+
+</body></html>

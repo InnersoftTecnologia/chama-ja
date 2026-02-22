@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="pt-BR"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Alerta de Nova Senha - Gestão de Filas</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&amp;family=Noto+Sans:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#00c0d1",
+                        "background-light": "#fafaf9",
+                        "background-dark": "#121416",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Lexend', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #121416;
+        }
+        .glow-effect {
+            box-shadow: 0 0 60px rgba(0, 192, 209, 0.25);
+        }
+        .text-shadow-cyan {
+            text-shadow: 0 0 20px rgba(0, 192, 209, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-background-dark font-display text-white antialiased">
+<!-- Background Media (Blurred) -->
+<div class="fixed inset-0 z-0">
+<div class="absolute inset-0 bg-gradient-to-br from-background-dark via-[#0f2224] to-background-dark opacity-90"></div>
+<div class="w-full h-full bg-center bg-cover blur-2xl scale-110 opacity-30" data-alt="Blurred corporate office background for atmospheric depth" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDR2Sxy7yUJyIorr6m-LMTpYqrYdWo2c9kAkJkj2kZFLRLXCuR6SVD6hdgWJ9atPIGrWgakLAmes0uo9AwocBl8dyUVrYZa-nPgffLvMj6WEwGVjrIityeKon-USzdwxGKoHSNb9oNNWyQ9AkBYNewTAVg5_L0-xnA07zJ92u6Sc2AbCP-bFnvooUFAUJjItNvC36jdx0g_Iy6fGhl75vPU9o4NnCzNtaAe8107z18WPXiQBH3kSj-kv820GPuHsHeAmgfrz4R7e-k");'>
+</div>
+</div>
+<!-- Main 16:9 Screen Container -->
+<div class="relative z-10 flex h-screen w-full flex-row overflow-hidden p-6 gap-6">
+<!-- Left Section: Central Alert Area -->
+<div class="flex flex-[3] flex-col items-center justify-center">
+<!-- Headline Header (Contextual) -->
+<div class="mb-8 flex flex-col items-center">
+<div class="flex items-center gap-4 mb-2">
+<span class="material-symbols-outlined text-primary text-4xl">notifications_active</span>
+<h2 class="text-white text-3xl font-bold tracking-[0.15em] uppercase">Nova Chamada</h2>
+</div>
+<div class="h-1 w-24 bg-primary rounded-full"></div>
+</div>
+<!-- Central Alert Modal -->
+<div class="glow-effect flex w-full max-w-4xl flex-col items-center justify-center rounded-xl border-2 border-primary/40 bg-[#1E2125] p-12 py-20 text-center">
+<p class="text-primary text-2xl font-bold tracking-[0.3em] uppercase mb-4">Senha</p>
+<h1 class="text-white text-[12rem] font-black leading-none tracking-tighter mb-8 drop-shadow-2xl">
+                    A-045
+                </h1>
+<div class="flex flex-col items-center gap-6">
+<div class="bg-primary px-10 py-4 rounded-lg">
+<p class="text-background-dark text-5xl font-black tracking-tight uppercase">
+                            Guichê 03
+                        </p>
+</div>
+<p class="text-primary/70 text-xl font-medium tracking-widest uppercase">
+                        Atendimento Prioritário
+                    </p>
+</div>
+</div>
+<!-- System Info Footer -->
+<div class="mt-12 flex items-center gap-8 opacity-40">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined">schedule</span>
+<span class="text-xl font-medium">14:35</span>
+</div>
+<div class="w-px h-6 bg-white/20"></div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="text-xl font-medium">24 Out, 2023</span>
+</div>
+</div>
+</div>
+<!-- Right Section: History Sidebar -->
+<div class="flex flex-1 flex-col rounded-xl bg-background-dark/80 backdrop-blur-md border border-white/10 p-6 overflow-hidden">
+<div class="flex items-center gap-3 border-b border-white/10 pb-4 mb-6">
+<span class="material-symbols-outlined text-primary">history</span>
+<h3 class="text-xl font-bold tracking-wide uppercase">Últimas Chamadas</h3>
+</div>
+<div class="flex flex-col gap-4 overflow-y-auto">
+<!-- History Item 1 -->
+<div class="flex flex-col gap-2 rounded-lg bg-white/5 p-5 border-l-4 border-primary/50">
+<div class="flex justify-between items-center">
+<p class="text-primary text-xs font-bold tracking-widest uppercase">Anterior</p>
+<p class="text-white/40 text-xs">2 min atrás</p>
+</div>
+<div class="flex justify-between items-end">
+<p class="text-white text-4xl font-bold">A-044</p>
+<p class="text-primary/80 text-lg font-medium">Guichê 02</p>
+</div>
+</div>
+<!-- History Item 2 -->
+<div class="flex flex-col gap-2 rounded-lg bg-white/5 p-5 border-l-4 border-white/20">
+<div class="flex justify-between items-center">
+<p class="text-white/40 text-xs font-bold tracking-widest uppercase">Histórico</p>
+<p class="text-white/40 text-xs">5 min atrás</p>
+</div>
+<div class="flex justify-between items-end">
+<p class="text-white/70 text-4xl font-bold">B-102</p>
+<p class="text-white/50 text-lg font-medium">Guichê 01</p>
+</div>
+</div>
+<!-- History Item 3 -->
+<div class="flex flex-col gap-2 rounded-lg bg-white/5 p-5 border-l-4 border-white/20">
+<div class="flex justify-between items-center">
+<p class="text-white/40 text-xs font-bold tracking-widest uppercase">Histórico</p>
+<p class="text-white/40 text-xs">8 min atrás</p>
+</div>
+<div class="flex justify-between items-end">
+<p class="text-white/70 text-4xl font-bold">C-015</p>
+<p class="text-white/50 text-lg font-medium">Guichê 05</p>
+</div>
+</div>
+<!-- History Item 4 -->
+<div class="flex flex-col gap-2 rounded-lg bg-white/5 p-5 border-l-4 border-white/20">
+<div class="flex justify-between items-center">
+<p class="text-white/40 text-xs font-bold tracking-widest uppercase">Histórico</p>
+<p class="text-white/40 text-xs">12 min atrás</p>
+</div>
+<div class="flex justify-between items-end">
+<p class="text-white/70 text-4xl font-bold">A-043</p>
+<p class="text-white/50 text-lg font-medium">Guichê 03</p>
+</div>
+</div>
+</div>
+<!-- Sidebar Stats at bottom -->
+<div class="mt-auto pt-6 grid grid-cols-2 gap-3 border-t border-white/10">
+<div class="bg-white/5 p-4 rounded-lg text-center">
+<p class="text-white/40 text-[10px] uppercase font-bold tracking-tighter">Total Hoje</p>
+<p class="text-primary text-xl font-bold">124</p>
+</div>
+<div class="bg-white/5 p-4 rounded-lg text-center">
+<p class="text-white/40 text-[10px] uppercase font-bold tracking-tighter">Média Espera</p>
+<p class="text-primary text-xl font-bold">12m</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Notification Bar (Alert context) -->
+<div class="fixed bottom-0 left-0 right-0 bg-primary/10 border-t border-primary/20 px-8 py-2 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="size-3 bg-primary rounded-full"></div>
+<p class="text-primary text-sm font-bold tracking-widest uppercase">Sistema de Gestão de Filas Ativo</p>
+</div>
+<div class="flex items-center gap-6 opacity-60">
+<span class="material-symbols-outlined text-white">settings</span>
+<span class="material-symbols-outlined text-white">wifi</span>
+<span class="material-symbols-outlined text-white">dns</span>
+</div>
+</div>
+</body></html>

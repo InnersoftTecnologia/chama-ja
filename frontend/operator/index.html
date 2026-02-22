@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Operador — Chamador</title>
+    <link rel="icon" href="data:," />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+      :root {
+        --amlic-blue: #52658C;
+        --amlic-blue-secondary: #4A5A7A;
+        --scart-blue: #0b6ef3;
+        --scart-blue-dark: #0a61d7;
+        --surface: rgba(255, 255, 255, 0.06);
+        --surface-border: rgba(255, 255, 255, 0.12);
+      }
+      body {
+        font-family: "Montserrat", system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+        background:
+          radial-gradient(1200px 600px at 20% 20%, rgba(82, 101, 140, 0.14), transparent 60%),
+          radial-gradient(900px 500px at 80% 30%, rgba(74, 90, 122, 0.10), transparent 55%),
+          #060816;
+      }
+      .card-glass {
+        background: var(--surface);
+        border: 1px solid var(--surface-border);
+        backdrop-filter: blur(10px);
+      }
+      .form-control:focus,
+      .form-select:focus {
+        border-color: var(--amlic-blue) !important;
+        box-shadow: 0 0 0 0.2rem rgba(82, 101, 140, 0.25);
+      }
+
+      .op-topbar {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        backdrop-filter: blur(10px);
+        background: rgba(6, 8, 22, 0.7);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .op-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .op-pill {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.06);
+        padding: 6px 10px;
+        border-radius: 999px;
+      }
+      .btn-scart-primary {
+        background: linear-gradient(135deg, var(--scart-blue) 0%, var(--scart-blue-dark) 100%);
+        color: #fff;
+        border: none;
+        box-shadow: 0 6px 18px rgba(11, 110, 243, 0.22);
+      }
+      .btn-scart-primary:hover {
+        color: #fff;
+        transform: translateY(-1px);
+      }
+      .btn-soft {
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(255, 255, 255, 0.08);
+        color: #fff;
+      }
+      .btn-soft:hover { color: #fff; background: rgba(255, 255, 255, 0.12); }
+
+      .queue-col {
+        min-height: 260px;
+      }
+      .queue-scroll {
+        max-height: 520px;
+        overflow: auto;
+      }
+      .ticket-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.10);
+        background: rgba(255, 255, 255, 0.05);
+      }
+      .ticket-code {
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        font-size: 1.05rem;
+      }
+      .ticket-meta {
+        color: rgba(255, 255, 255, 0.72);
+        font-size: 0.85rem;
+      }
+
+      /* Light mode */
+      body.theme-light {
+        background:
+          radial-gradient(1200px 600px at 20% 20%, rgba(11, 110, 243, 0.10), transparent 60%),
+          radial-gradient(900px 500px at 80% 30%, rgba(255, 193, 7, 0.14), transparent 55%),
+          #f4f7fb;
+        color: #0b1320;
+      }
+      body.theme-light .op-topbar { background: rgba(244, 247, 251, 0.85); border-bottom: 1px solid rgba(10, 20, 40, 0.10); }
+      body.theme-light .card-glass { background: rgba(255, 255, 255, 0.86); border: 1px solid rgba(10, 20, 40, 0.10); }
+      body.theme-light .op-pill { color: rgba(10, 20, 40, 0.86); border: 1px solid rgba(10, 20, 40, 0.12); background: rgba(10, 20, 40, 0.03); }
+      body.theme-light .btn-soft { border: 1px solid rgba(10, 20, 40, 0.14); background: rgba(10, 20, 40, 0.04); color: #0b1320; }
+      body.theme-light .btn-soft:hover { background: rgba(10, 20, 40, 0.06); color: #0b1320; }
+      body.theme-light .ticket-card { background: rgba(10, 20, 40, 0.03); border: 1px solid rgba(10, 20, 40, 0.10); }
+      body.theme-light .ticket-meta { color: rgba(10, 20, 40, 0.70); }
+      body.theme-light .text-white { color: #0b1320 !important; }
+      body.theme-light .text-white-50 { color: rgba(10, 20, 40, 0.62) !important; }
+      body.theme-light .text-white-75 { color: rgba(10, 20, 40, 0.78) !important; }
+    </style>
+  </head>
+  <body>
+    <!-- Topbar -->
+    <div class="op-topbar">
+      <div class="container py-3">
+        <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+          <div class="op-brand">
+            <div class="fw-bold text-white" style="font-size:1.1rem;">Operador</div>
+            <div id="pillUser" class="op-pill d-none"></div>
+            <div id="pillCounter" class="op-pill d-none"></div>
+          </div>
+          <div class="d-flex align-items-center gap-2">
+            <button id="btnThemeToggle" class="btn btn-soft btn-sm">Light</button>
+            <button id="btnLogout" class="btn btn-soft btn-sm d-none">Sair</button>
+          </div>
+        </div>
+        <div class="small mt-2">
+          <span id="statusText" class="text-white-50">Carregando…</span>
+        </div>
+      </div>
+    </div>
+
+    <main class="container py-4">
+      <div class="row g-4">
+        <!-- Em atendimento -->
+        <div class="col-12 col-lg-5">
+          <div class="card card-glass">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-white-50 small">Em atendimento</div>
+                  <div class="fw-bold text-white" style="font-size: 1.25rem;">Atendimento atual</div>
+                </div>
+                <div class="d-flex gap-2">
+                  <button id="btnRefreshNow" class="btn btn-soft btn-sm">Atualizar</button>
+                </div>
+              </div>
+
+              <div id="currentEmpty" class="mt-4 text-white-50">
+                Nenhuma senha em atendimento agora.
+              </div>
+
+              <div id="currentCard" class="mt-4 d-none">
+                <div class="ticket-card">
+                  <div>
+                    <div id="curCode" class="ticket-code text-white">A-000</div>
+                    <div id="curService" class="ticket-meta">Serviço</div>
+                    <div class="ticket-meta mt-1">
+                      <span class="text-white-50">Status:</span> <span id="curStatus" class="text-white-75">called</span>
+                      <span class="text-white-50 ms-2">Guichê:</span> <span id="curCounter" class="text-white-75">—</span>
+                    </div>
+                    <div class="ticket-meta mt-1">
+                      <span class="text-white-50">Chamado:</span> <span id="curCalledAt" class="text-white-75">—</span>
+                      <span class="text-white-50 ms-2">Início:</span> <span id="curStartedAt" class="text-white-75">—</span>
+                    </div>
+                  </div>
+                  <div class="text-end">
+                    <div id="curPriorityBadge" class="op-pill">Normal</div>
+                  </div>
+                </div>
+
+                <div class="d-grid gap-2 d-md-flex mt-3">
+                  <button id="btnStart" class="btn btn-scart-primary">Iniciar</button>
+                  <button id="btnComplete" class="btn btn-soft">Finalizar</button>
+                  <button id="btnNoShow" class="btn btn-soft">Não compareceu</button>
+                  <button id="btnCancel" class="btn btn-soft">Cancelar</button>
+                </div>
+                <div class="small text-white-50 mt-2">Dica: finalize o atendimento antes de chamar outra senha.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filas -->
+        <div class="col-12 col-lg-7">
+          <div class="row g-4">
+            <!-- Preferencial -->
+            <div class="col-12 col-md-6 queue-col">
+              <div class="card card-glass h-100">
+                <div class="card-body p-4">
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                      <div class="text-white-50 small">Fila</div>
+                      <div class="fw-bold text-white">Preferencial</div>
+                      <div class="small text-white-50"><span id="countPref">0</span> aguardando</div>
+                    </div>
+                    <button id="btnCallNextPref" class="btn btn-scart-primary btn-sm">Chamar próxima</button>
+                  </div>
+                  <div class="queue-scroll mt-3 d-grid gap-2" id="listPref"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Normal -->
+            <div class="col-12 col-md-6 queue-col">
+              <div class="card card-glass h-100">
+                <div class="card-body p-4">
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                      <div class="text-white-50 small">Fila</div>
+                      <div class="fw-bold text-white">Normal</div>
+                      <div class="small text-white-50"><span id="countNorm">0</span> aguardando</div>
+                    </div>
+                    <button id="btnCallNextNorm" class="btn btn-scart-primary btn-sm">Chamar próxima</button>
+                  </div>
+                  <div class="queue-scroll mt-3 d-grid gap-2" id="listNorm"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Login Modal -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content card-glass">
+          <div class="modal-body p-0">
+            <div class="row g-0">
+              <div class="col-12 col-md-6 p-4">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div>
+                    <div class="fw-bold text-white" style="font-size:1.2rem;">Login do Operador</div>
+                    <div class="text-white-50 small mt-1">Acesse para chamar senhas e gerenciar atendimentos.</div>
+                  </div>
+                </div>
+
+                <div class="mt-3">
+                  <label class="form-label text-white-50">Operador</label>
+                  <select id="operatorSelect" class="form-select">
+                    <option value="">Carregando operadores...</option>
+                  </select>
+                  <div class="form-text text-white-50">Selecione o operador.</div>
+                </div>
+                <div class="mt-3">
+                  <label class="form-label text-white-50">Guichê</label>
+                  <select id="counterSelect" class="form-select">
+                    <option value="">Carregando guichês...</option>
+                  </select>
+                  <div class="form-text text-white-50">Somente guichês ativos aparecem aqui.</div>
+                </div>
+                <div class="mt-3">
+                  <label class="form-label text-white-50">Senha</label>
+                  <input id="password" type="password" class="form-control" placeholder="Digite sua senha" />
+                </div>
+
+                <div class="d-grid gap-2 mt-4">
+                  <button id="btnLogin" class="btn btn-scart-primary fw-bold">Entrar</button>
+                  <button id="btnReloadCounters" class="btn btn-soft">Recarregar</button>
+                </div>
+                <div class="small text-white-50 mt-3" id="loginHint"></div>
+              </div>
+
+              <div class="col-12 col-md-6 p-4 d-flex flex-column justify-content-center" style="background: rgba(11,110,243,0.08); border-left: 1px solid rgba(255,255,255,0.08);">
+                <div class="text-center">
+                  <div class="fw-bold text-white" style="font-size:1.25rem;">ChamaJá</div>
+                  <div class="text-white-50 small mt-1">Fila preferencial e normal em tempo real.</div>
+                  <div class="mt-4 text-white-50 small">
+                    Use o botão “Chamar próxima” para disparar a chamada na TV.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      const EDGE_BASE = (window.EDGE_BASE || `${window.location.protocol}//${window.location.hostname}:7071`).replace(/\/$/, "");
+
+      function getJwt() { return localStorage.getItem("op_jwt") || ""; }
+      function setJwt(v) { if (v) localStorage.setItem("op_jwt", v); else localStorage.removeItem("op_jwt"); }
+      function getCounterId() { return localStorage.getItem("op_counter_id") || ""; }
+      function setCounterId(v) { if (v) localStorage.setItem("op_counter_id", v); else localStorage.removeItem("op_counter_id"); }
+
+      function authHeaders() { return { Authorization: `Bearer ${getJwt()}`, "Content-Type": "application/json" }; }
+
+      function setStatus(msg) { document.getElementById("statusText").textContent = msg || ""; }
+      function setLoginHint(msg) { document.getElementById("loginHint").textContent = msg || ""; }
+
+      // Visible diagnostics (so "nothing happens" is never silent)
+      window.addEventListener("error", (e) => { setStatus(`Erro JS: ${e.message || e.type}`); });
+      window.addEventListener("unhandledrejection", (e) => { setStatus(`Promise rejeitada: ${e.reason?.message || e.reason || "erro"}`); });
+
+      async function api(path, opts = {}) {
+        const res = await fetch(`${EDGE_BASE}${path}`, opts);
+        const txt = await res.text();
+        let data;
+        try { data = JSON.parse(txt); } catch { data = txt; }
+        if (!res.ok) throw new Error(`${res.status}: ${typeof data === "string" ? data : JSON.stringify(data)}`);
+        return data;
+      }
+
+      const Toast = Swal.mixin({
+        toast: true,
+        position: "top-end",
+        showConfirmButton: false,
+        timer: 1600,
+        timerProgressBar: true,
+        background: "#f7fbff",
+        color: "#0b1320"
+      });
+
+      function fmtTime(s) {
+        if (!s) return "—";
+        try { return new Date(s).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); }
+        catch { return String(s); }
+      }
+
+      function priorityLabel(p) { return p === "preferential" ? "Preferencial" : "Normal"; }
+
+      function setTheme(next) {
+        if (next === "light") {
+          document.body.classList.add("theme-light");
+          localStorage.setItem("op_theme", "light");
+          document.getElementById("btnThemeToggle").textContent = "Dark";
+        } else {
+          document.body.classList.remove("theme-light");
+          localStorage.setItem("op_theme", "dark");
+          document.getElementById("btnThemeToggle").textContent = "Light";
+        }
+      }
+
+      function toggleTheme() {
+        const cur = localStorage.getItem("op_theme") || "dark";
+        setTheme(cur === "dark" ? "light" : "dark");
+      }
+
+      function showIdentity(me, counterName) {
+        const pillUser = document.getElementById("pillUser");
+        const pillCounter = document.getElementById("pillCounter");
+        pillUser.textContent = `${me.email || "operador"} (${me.role || "operator"})`;
+        pillCounter.textContent = counterName ? `Guichê: ${counterName}` : "Guichê: —";
+        pillUser.classList.remove("d-none");
+        pillCounter.classList.remove("d-none");
+      }
+
+      function setLoggedInUI(isLoggedIn) {
+        document.getElementById("btnLogout").classList.toggle("d-none", !isLoggedIn);
+      }
+
+      function renderTicketList(rootId, countId, tickets) {
+        const root = document.getElementById(rootId);
+        const countEl = document.getElementById(countId);
+        countEl.textContent = String((tickets || []).length);
+        root.innerHTML = "";
+        if (!tickets || tickets.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "text-white-50 small";
+          empty.textContent = "Fila vazia.";
+          root.appendChild(empty);
+          return;
+        }
+
+        tickets.forEach((t) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "ticket-card text-start";
+          btn.style.cursor = "pointer";
+          btn.innerHTML = `
+            <div>
+              <div class="ticket-code text-white">${t.ticket_code}</div>
+              <div class="ticket-meta">${t.service_name}</div>
+              <div class="ticket-meta mt-1"><span class="text-white-50">Aguardando:</span> ${Math.floor((t.wait_seconds || 0) / 60)}m</div>
+            </div>
+            <div class="op-pill">${priorityLabel(t.priority)}</div>
+          `;
+          btn.addEventListener("click", () => callSpecificTicket(t.id));
+          root.appendChild(btn);
+        });
+      }
+
+      let refreshTimer = null;
+      let refreshInFlight = false;
+      let lastCurrentTicketId = null;
+
+      async function refreshAll() {
+        if (refreshInFlight) return;
+        refreshInFlight = true;
+        try {
+          const [me, pref, norm, cur] = await Promise.all([
+            api("/auth/me", { headers: authHeaders() }),
+            api("/tickets/queue?priority=preferential", { headers: authHeaders() }),
+            api("/tickets/queue?priority=normal", { headers: authHeaders() }),
+            api("/operator/my-ticket", { headers: authHeaders() }),
+          ]);
+
+          const counterId = getCounterId();
+          let counterName = "";
+          if (counterId) {
+            try {
+              const counters = await api("/operator/counters", { headers: authHeaders() });
+              const c = (counters || []).find(x => x.id === counterId);
+              counterName = c ? c.name : "";
+            } catch {}
+          }
+          showIdentity(me, counterName);
+
+          renderTicketList("listPref", "countPref", pref);
+          renderTicketList("listNorm", "countNorm", norm);
+
+          renderCurrent(cur);
+
+          setStatus(`Atualizado: ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`);
+        } catch (e) {
+          setStatus(`Erro ao atualizar: ${String(e)}`);
+        } finally {
+          refreshInFlight = false;
+        }
+      }
+
+      function renderCurrent(cur) {
+        const empty = document.getElementById("currentEmpty");
+        const card = document.getElementById("currentCard");
+        if (!cur) {
+          lastCurrentTicketId = null;
+          empty.classList.remove("d-none");
+          card.classList.add("d-none");
+          return;
+        }
+
+        if (cur.id && cur.id !== lastCurrentTicketId) {
+          lastCurrentTicketId = cur.id;
+        }
+
+        empty.classList.add("d-none");
+        card.classList.remove("d-none");
+
+        document.getElementById("curCode").textContent = cur.ticket_code || "—";
+        document.getElementById("curService").textContent = cur.service_name || "—";
+        document.getElementById("curStatus").textContent = cur.status || "—";
+        document.getElementById("curCounter").textContent = cur.counter_name || "—";
+        document.getElementById("curCalledAt").textContent = fmtTime(cur.called_at);
+        document.getElementById("curStartedAt").textContent = fmtTime(cur.service_started_at);
+        document.getElementById("curPriorityBadge").textContent = priorityLabel(cur.priority);
+
+        // Actions availability
+        document.getElementById("btnStart").disabled = cur.status !== "called";
+        document.getElementById("btnComplete").disabled = !(cur.status === "called" || cur.status === "in_service");
+        document.getElementById("btnNoShow").disabled = !(cur.status === "called" || cur.status === "in_service");
+        document.getElementById("btnCancel").disabled = (cur.status === "completed" || cur.status === "cancelled" || cur.status === "no_show");
+      }
+
+      async function ensureLoggedInOrThrow() {
+        if (!getJwt()) throw new Error("Não autenticado. Faça login.");
+        const me = await api("/auth/me", { headers: authHeaders() });
+        if (!me || !me.sub) throw new Error("Sessão inválida. Faça login novamente.");
+        return me;
+      }
+
+      async function callNext(priority) {
+        await ensureLoggedInOrThrow();
+        const counter_id = getCounterId();
+        if (!counter_id) throw new Error("Selecione um guichê no login.");
+        return await api("/tickets/call-next", {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ counter_id, priority }),
+        });
+      }
+
+      async function callSpecificTicket(ticketId) {
+        try {
+          await ensureLoggedInOrThrow();
+          const counter_id = getCounterId();
+          if (!counter_id) throw new Error("Selecione um guichê no login.");
+          const ok = await Swal.fire({
+            icon: "question",
+            title: "Chamar esta senha?",
+            text: "A chamada aparecerá na TV.",
+            showCancelButton: true,
+            confirmButtonText: "Chamar",
+            cancelButtonText: "Cancelar",
+            confirmButtonColor: "#0b6ef3",
+          });
+          if (!ok.isConfirmed) return;
+          await api(`/tickets/${encodeURIComponent(ticketId)}/call`, {
+            method: "POST",
+            headers: authHeaders(),
+            body: JSON.stringify({ counter_id }),
+          });
+          Toast.fire({ icon: "success", title: "Senha chamada" });
+          await refreshAll();
+        } catch (e) {
+          Swal.fire({ icon: "error", title: "Erro", text: String(e), confirmButtonColor: "#0b6ef3" });
+        }
+      }
+
+      async function actionOnCurrent(action) {
+        try {
+          await ensureLoggedInOrThrow();
+          const cur = await api("/operator/my-ticket", { headers: authHeaders() });
+          if (!cur || !cur.id) throw new Error("Nenhum ticket atual.");
+
+          if (action === "start") {
+            await api(`/tickets/${encodeURIComponent(cur.id)}/start`, { method: "POST", headers: authHeaders() });
+            Toast.fire({ icon: "success", title: "Atendimento iniciado" });
+          } else if (action === "complete") {
+            await api(`/tickets/${encodeURIComponent(cur.id)}/complete`, { method: "POST", headers: authHeaders() });
+            Toast.fire({ icon: "success", title: "Atendimento finalizado" });
+          } else if (action === "no-show") {
+            await api(`/tickets/${encodeURIComponent(cur.id)}/no-show`, { method: "POST", headers: authHeaders() });
+            Toast.fire({ icon: "warning", title: "Marcado como não compareceu" });
+          } else if (action === "cancel") {
+            const ok = await Swal.fire({
+              icon: "warning",
+              title: "Cancelar senha?",
+              text: "A senha será marcada como cancelada.",
+              showCancelButton: true,
+              confirmButtonText: "Cancelar senha",
+              cancelButtonText: "Voltar",
+              confirmButtonColor: "#0b6ef3",
+            });
+            if (!ok.isConfirmed) return;
+            await api(`/tickets/${encodeURIComponent(cur.id)}/cancel`, { method: "POST", headers: authHeaders() });
+            Toast.fire({ icon: "info", title: "Senha cancelada" });
+          }
+
+          await refreshAll();
+        } catch (e) {
+          Swal.fire({ icon: "error", title: "Erro", text: String(e), confirmButtonColor: "#0b6ef3" });
+        }
+      }
+
+      async function loadOperatorsIntoSelect() {
+        const sel = document.getElementById("operatorSelect");
+        if (!sel) return;
+        sel.innerHTML = "<option value=''>Carregando operadores...</option>";
+        try {
+          const operators = await api("/public/operators", { headers: { "Content-Type": "application/json" } });
+          sel.innerHTML = "";
+          if (!operators || operators.length === 0) {
+            const opt = document.createElement("option");
+            opt.value = "";
+            opt.textContent = "Nenhum operador ativo";
+            sel.appendChild(opt);
+            return;
+          }
+          operators.forEach((op) => {
+            const opt = document.createElement("option");
+            opt.value = op.email; // Usar email como value para login
+            opt.textContent = op.full_name || op.email; // Mostrar nome completo ou email
+            opt.dataset.operatorId = op.id; // Guardar ID se necessário
+            sel.appendChild(opt);
+          });
+        } catch (e) {
+          sel.innerHTML = "";
+          const opt = document.createElement("option");
+          opt.value = "";
+          opt.textContent = "Erro ao carregar operadores";
+          sel.appendChild(opt);
+          console.error("Failed to load operators:", e);
+          setLoginHint(`Erro ao carregar operadores: ${String(e)}`);
+        }
+      }
+
+      async function loadCountersIntoSelect() {
+        const sel = document.getElementById("counterSelect");
+        if (!sel) return;
+        sel.innerHTML = "<option value=''>Carregando guichês...</option>";
+        try {
+          // Tentar usar endpoint público primeiro (antes do login)
+          let counters;
+          try {
+            counters = await api("/public/counters", { headers: { "Content-Type": "application/json" } });
+          } catch (e) {
+            // Se falhar, tentar com JWT (após login)
+            if (getJwt()) {
+              counters = await api("/operator/counters", { headers: authHeaders() });
+            } else {
+              throw e;
+            }
+          }
+          sel.innerHTML = "";
+          if (!counters || counters.length === 0) {
+            const opt = document.createElement("option");
+            opt.value = "";
+            opt.textContent = "Nenhum guichê ativo";
+            sel.appendChild(opt);
+            return;
+          }
+          counters.forEach((c) => {
+            const opt = document.createElement("option");
+            opt.value = c.id;
+            opt.textContent = c.name;
+            sel.appendChild(opt);
+          });
+        } catch (e) {
+          sel.innerHTML = "";
+          const opt = document.createElement("option");
+          opt.value = "";
+          opt.textContent = "Erro ao carregar guichês";
+          sel.appendChild(opt);
+          console.error("Failed to load counters:", e);
+          setLoginHint(`Erro ao carregar guichês: ${String(e)}`);
+        }
+      }
+
+      async function openLoginModal() {
+        const modalEl = document.getElementById("loginModal");
+        const m = new bootstrap.Modal(modalEl);
+        m.show();
+        // Carregar operadores e guichês ao abrir o modal
+        await Promise.all([
+          loadOperatorsIntoSelect(),
+          loadCountersIntoSelect()
+        ]);
+      }
+
+      async function closeLoginModal() {
+        const modalEl = document.getElementById("loginModal");
+        const inst = bootstrap.Modal.getInstance(modalEl);
+        if (inst) inst.hide();
+      }
+
+      document.getElementById("btnThemeToggle").addEventListener("click", () => toggleTheme());
+      document.getElementById("btnLogout").addEventListener("click", () => {
+        setJwt("");
+        setCounterId("");
+        location.reload();
+      });
+      document.getElementById("btnRefreshNow").addEventListener("click", () => refreshAll());
+      document.getElementById("btnCallNextPref").addEventListener("click", async () => {
+        try {
+          const r = await callNext("preferential");
+          Toast.fire({ icon: "success", title: `Chamando ${r.ticket_code || "senha"}` });
+          await refreshAll();
+        } catch (e) {
+          Swal.fire({ icon: "error", title: "Erro", text: String(e), confirmButtonColor: "#0b6ef3" });
+        }
+      });
+      document.getElementById("btnCallNextNorm").addEventListener("click", async () => {
+        try {
+          const r = await callNext("normal");
+          Toast.fire({ icon: "success", title: `Chamando ${r.ticket_code || "senha"}` });
+          await refreshAll();
+        } catch (e) {
+          Swal.fire({ icon: "error", title: "Erro", text: String(e), confirmButtonColor: "#0b6ef3" });
+        }
+      });
+
+      document.getElementById("btnStart").addEventListener("click", () => actionOnCurrent("start"));
+      document.getElementById("btnComplete").addEventListener("click", () => actionOnCurrent("complete"));
+      document.getElementById("btnNoShow").addEventListener("click", () => actionOnCurrent("no-show"));
+      document.getElementById("btnCancel").addEventListener("click", () => actionOnCurrent("cancel"));
+
+      document.getElementById("btnReloadCounters").addEventListener("click", async () => {
+        try {
+          await Promise.all([
+            loadOperatorsIntoSelect(),
+            loadCountersIntoSelect()
+          ]);
+          setLoginHint("Operadores e guichês atualizados.");
+        } catch (e) {
+          setLoginHint(`Erro ao recarregar: ${String(e)}`);
+        }
+      });
+
+      document.getElementById("btnLogin").addEventListener("click", async () => {
+        try {
+          setLoginHint("Entrando…");
+          
+          // Pegar email do operador selecionado
+          const operatorSelect = document.getElementById("operatorSelect");
+          const email = operatorSelect.value || "";
+          if (!email) throw new Error("Selecione um operador.");
+          
+          // Pegar senha
+          const password = document.getElementById("password").value || "";
+          if (!password) throw new Error("Digite sua senha.");
+          
+          // Pegar guichê selecionado
+          const counterSelect = document.getElementById("counterSelect");
+          const counterId = counterSelect.value || "";
+          if (!counterId) throw new Error("Selecione um guichê.");
+          
+          // Fazer login
+          const payload = {
+            email: email,
+            password: password,
+          };
+          const data = await api("/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+          setJwt(data.access_token);
+          
+          // Salvar guichê selecionado
+          setCounterId(counterId);
+
+          const me = await api("/auth/me", { headers: authHeaders() });
+          showIdentity(me, counterSelect.options[counterSelect.selectedIndex]?.textContent || "");
+
+          setLoggedInUI(true);
+          await closeLoginModal();
+          Toast.fire({ icon: "success", title: "Login OK" });
+
+          if (refreshTimer) clearInterval(refreshTimer);
+          await refreshAll();
+          refreshTimer = setInterval(refreshAll, 2500);
+        } catch (e) {
+          setLoginHint(`Falha no login: ${String(e)}`);
+          Swal.fire({ icon: "error", title: "Login", text: String(e), confirmButtonColor: "#0b6ef3" });
+        }
+      });
+
+      // Boot
+      (async () => {
+        setTheme(localStorage.getItem("op_theme") || "dark");
+        if (!getJwt()) {
+          setLoggedInUI(false);
+          setStatus("Faça login para continuar.");
+          await openLoginModal();
+          return;
+        }
+        try {
+          const me = await api("/auth/me", { headers: authHeaders() });
+          setLoggedInUI(true);
+          setStatus("Sessão restaurada.");
+          // ensure counter exists; otherwise ask again
+          if (!getCounterId()) {
+          await openLoginModal();
+          setLoginHint("Selecione o operador, guichê e digite sua senha.");
+            return;
+          }
+          // show identity
+          try {
+            const counters = await api("/operator/counters", { headers: authHeaders() });
+            const c = (counters || []).find(x => x.id === getCounterId());
+            showIdentity(me, c ? c.name : "");
+          } catch {}
+          await refreshAll();
+          refreshTimer = setInterval(refreshAll, 2500);
+        } catch (e) {
+          setJwt("");
+          setCounterId("");
+          setLoggedInUI(false);
+          setStatus("Sessão expirada. Faça login novamente.");
+          await openLoginModal();
+        }
+      })();
+    </script>
+  </body>
+</html>
+

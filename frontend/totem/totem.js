@@ -112,27 +112,36 @@ async function loadTenantBranding() {
   try {
     const data = await api("/tv/state", { headers: authHeaders() });
     const t = data?.tenant || {};
-    const name = (t.nome_fantasia || t.nome_razao_social || "CHAMADOR").toString();
-    document.getElementById("tenantName").textContent = name.toUpperCase();
-
-    if (t.nome_fantasia || t.nome_razao_social) {
-      document.getElementById("tenantSubtitle").textContent = "Retire sua senha";
-    }
+    const name = (t.nome_fantasia || t.nome_razao_social || "").toString();
 
     const logoEl = document.getElementById("tenantLogo");
     const logoWrap = document.getElementById("logoWrap");
-    if (logoEl && logoWrap) {
-      if (t.logo_base64 && typeof t.logo_base64 === "string") {
-        const v = t.logo_base64.trim();
-        logoEl.src = v.startsWith("data:") ? v : `data:image/svg+xml;base64,${v}`;
-        logoWrap.classList.remove("d-none");
-        logoWrap.classList.add("d-flex");
-      }
+    const nameEl = document.getElementById("tenantName");
+    const subtitleEl = document.getElementById("tenantSubtitle");
+    const nameWrap = document.getElementById("tenantNameWrap");
+
+    // Logo estático SVG tem prioridade; fallback para base64 da API; fallback para nome texto
+    if (logoEl && logoEl.src && logoEl.getAttribute("src")) {
+      // Logo já definido no HTML (src estático) — apenas garante visibilidade
+      if (logoWrap) { logoWrap.classList.remove("d-none"); logoWrap.classList.add("d-flex"); }
+    } else if (logoEl && logoWrap && t.logo_base64 && typeof t.logo_base64 === "string") {
+      const v = t.logo_base64.trim();
+      logoEl.src = v.startsWith("data:") ? v : `data:image/svg+xml;base64,${v}`;
+      logoWrap.classList.remove("d-none");
+      logoWrap.classList.add("d-flex");
+    } else if (name && nameWrap) {
+      if (nameEl) nameEl.textContent = name.toUpperCase();
+      if (subtitleEl) subtitleEl.textContent = "Retire sua senha";
+      nameWrap.classList.remove("d-none");
+      nameWrap.classList.add("d-flex");
     }
   } catch {
     // Ignore branding failures
   }
 }
+
+// Estado do fluxo: lista completa de serviços carregada da API
+let allServices = [];
 
 function createServiceCard(svc) {
   const isPriority = svc.priority_mode === "preferential";
@@ -155,64 +164,79 @@ function createServiceCard(svc) {
   return btn;
 }
 
-function renderServices(services) {
-  const loadingState = document.getElementById("loadingState");
-  const servicesContainer = document.getElementById("servicesContainer");
+function showScreen(screenId) {
+  const choiceScreen = document.getElementById("choiceScreen");
+  const servicesScreen = document.getElementById("servicesScreen");
   const emptyState = document.getElementById("emptyState");
-  const normalServices = document.getElementById("normalServices");
-  const preferentialServices = document.getElementById("preferentialServices");
 
-  // Hide loading
-  loadingState.classList.add("d-none");
+  if (choiceScreen) choiceScreen.classList.add("d-none");
+  if (servicesScreen) servicesScreen.classList.add("d-none");
+  if (emptyState) {
+    emptyState.classList.add("d-none");
+    emptyState.classList.remove("d-flex");
+  }
 
-  if (!services || services.length === 0) {
+  if (screenId === "choice" && choiceScreen) {
+    choiceScreen.classList.remove("d-none");
+    choiceScreen.classList.add("d-flex");
+  } else if (screenId === "services" && servicesScreen) {
+    servicesScreen.classList.remove("d-none");
+    servicesScreen.classList.add("d-flex");
+  } else if (screenId === "empty" && emptyState) {
     emptyState.classList.remove("d-none");
     emptyState.classList.add("d-flex");
+  }
+}
+
+function renderChoiceScreen(services) {
+  const list = Array.isArray(services) ? services : [];
+  const normal = list.filter((s) => s && s.priority_mode !== "preferential");
+  const preferential = list.filter((s) => s && s.priority_mode === "preferential");
+
+  const btnNormal = document.getElementById("btnNormal");
+  const btnPreferential = document.getElementById("btnPreferential");
+  if (btnNormal) btnNormal.style.display = normal.length > 0 ? "" : "none";
+  if (btnPreferential) btnPreferential.style.display = preferential.length > 0 ? "" : "none";
+
+  showScreen("choice");
+  setStatus("");
+  const footerText = document.getElementById("footerText");
+  if (footerText) footerText.textContent = "Escolha o tipo de atendimento.";
+}
+
+function renderServicesList(serviceList) {
+  const listEl = document.getElementById("servicesList");
+  if (!listEl) return;
+  listEl.innerHTML = "";
+  const list = Array.isArray(serviceList) ? serviceList : [];
+  list.forEach((svc) => listEl.appendChild(createServiceCard(svc)));
+  showScreen("services");
+  const footerText = document.getElementById("footerText");
+  if (footerText) footerText.textContent = "Toque no serviço desejado para emitir sua senha.";
+  setStatus(`${list.length} serviço(s) disponível(is)`);
+}
+
+function goBackToChoice() {
+  renderChoiceScreen(allServices);
+}
+
+function renderServices(services) {
+  const loadingState = document.getElementById("loadingState");
+  const emptyState = document.getElementById("emptyState");
+
+  if (loadingState) loadingState.classList.add("d-none");
+  allServices = Array.isArray(services) ? services : [];
+
+  if (!allServices.length) {
+    showScreen("empty");
     setStatus("Nenhum serviço ativo encontrado.");
     return;
   }
 
-  // Clear containers
-  normalServices.innerHTML = "";
-  preferentialServices.innerHTML = "";
-
-  // Separate services by priority
-  const normal = services.filter((s) => s.priority_mode !== "preferential");
-  const preferential = services.filter((s) => s.priority_mode === "preferential");
-
-  // Render normal services
-  normal.forEach((svc) => {
-    normalServices.appendChild(createServiceCard(svc));
-  });
-
-  // Render preferential services
-  preferential.forEach((svc) => {
-    preferentialServices.appendChild(createServiceCard(svc));
-  });
-
-  // Show empty message if a column has no services
-  if (normal.length === 0) {
-    normalServices.innerHTML = `
-      <div class="empty-column">
-        <span class="material-icons">inbox</span>
-        <span>Sem serviços normais</span>
-      </div>
-    `;
-  }
-
-  if (preferential.length === 0) {
-    preferentialServices.innerHTML = `
-      <div class="empty-column">
-        <span class="material-icons">inbox</span>
-        <span>Sem serviços preferenciais</span>
-      </div>
-    `;
-  }
-
-  // Show services container
-  servicesContainer.classList.remove("d-none");
-  setStatus(`${services.length} serviço(s) disponível(is)`);
+  renderChoiceScreen(allServices);
 }
+
+let _overlayTimer = null;
 
 function openOverlay(data) {
   const overlay = document.getElementById("overlay");
@@ -226,14 +250,22 @@ function openOverlay(data) {
     data.priority === "preferential" ? "Preferencial" : "Normal";
 
   const foot = document.getElementById("overlayFootnote");
-  foot.textContent = data.saved_path ? `Arquivo: ${data.saved_path}` : "Aguarde sua vez no painel.";
+  foot.textContent = data.printed
+    ? "Recibo impresso. Aguarde sua vez no painel."
+    : "Impressora indisponível. Aguarde sua vez no painel.";
+
+  // Auto-fecha e volta para tela inicial após 2 segundos
+  if (_overlayTimer) clearTimeout(_overlayTimer);
+  _overlayTimer = setTimeout(() => closeOverlay(), 2000);
 }
 
 function closeOverlay() {
+  if (_overlayTimer) { clearTimeout(_overlayTimer); _overlayTimer = null; }
   const overlay = document.getElementById("overlay");
   overlay.classList.add("d-none");
   overlay.classList.remove("d-flex");
   overlay.setAttribute("aria-hidden", "true");
+  goBackToChoice();
 }
 
 function downloadTxt(filename, content) {
@@ -261,11 +293,7 @@ async function emitTicket(service) {
       body: JSON.stringify({ service_id: service.id }),
     });
 
-    // Download ticket file
-    const txt = data.print_text || "";
-    const fname = `ticket_${(data.ticket_code || "senha").replaceAll("/", "-")}.txt`;
-    if (txt) downloadTxt(fname, txt);
-
+    // Recibo deve sair na impressora térmica; não fazemos download de .txt
     openOverlay(data);
     setStatus("Senha emitida com sucesso!");
   } catch (e) {
@@ -305,6 +333,10 @@ function initTheme() {
 }
 
 async function main() {
+  // Ano do copyright
+  const yearEl = document.getElementById("footerYear");
+  if (yearEl) yearEl.textContent = new Date().getFullYear();
+
   // Start clock
   updateClock();
   setInterval(updateClock, 1000);
@@ -317,15 +349,36 @@ async function main() {
 
   // Load services
   try {
-    const services = await api("/totem/services", { headers: authHeaders() });
+    const raw = await api("/totem/services", { headers: authHeaders() });
+    const services = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.services) ? raw.services : []);
     renderServices(services);
   } catch (e) {
     console.error("Falha ao carregar serviços:", e);
-    document.getElementById("loadingState").classList.add("d-none");
-    document.getElementById("emptyState").classList.remove("d-none");
-    document.getElementById("emptyState").classList.add("d-flex");
+    const loadingState = document.getElementById("loadingState");
+    const emptyState = document.getElementById("emptyState");
+    if (loadingState) loadingState.classList.add("d-none");
+    if (emptyState) {
+      emptyState.classList.remove("d-none");
+      emptyState.classList.add("d-flex");
+    }
     setStatus(`Falha ao carregar: ${String(e)}`);
   }
+
+  // Tela 1: botões NORMAL e PREFERENCIAL
+  const btnNormal = document.getElementById("btnNormal");
+  const btnPreferential = document.getElementById("btnPreferential");
+  if (btnNormal) btnNormal.addEventListener("click", () => {
+    const normal = allServices.filter((s) => s && s.priority_mode !== "preferential");
+    if (normal.length) renderServicesList(normal);
+  });
+  if (btnPreferential) btnPreferential.addEventListener("click", () => {
+    const preferential = allServices.filter((s) => s && s.priority_mode === "preferential");
+    if (preferential.length) renderServicesList(preferential);
+  });
+
+  // Tela 2: voltar para escolha do tipo
+  const btnBack = document.getElementById("btnBack");
+  if (btnBack) btnBack.addEventListener("click", goBackToChoice);
 
   // Overlay handlers
   document.getElementById("btnOk").addEventListener("click", closeOverlay);

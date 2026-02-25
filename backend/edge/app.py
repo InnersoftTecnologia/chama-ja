@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import hashlib
 import json
 import os
 import socket
+import threading
 import time
 import uuid
 from contextlib import contextmanager
@@ -14,10 +17,11 @@ import mysql.connector
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Header, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from PIL import Image
 
 from .auth import create_access_token, decode_access_token, hash_password, require_role, verify_password
+from .thermal_print import print_ticket
 
 load_dotenv()
 
@@ -409,7 +413,8 @@ def fetch_state() -> Dict[str, Any]:
         cur = conn.cursor(dictionary=True)
         cur.execute(
             """
-            SELECT cpf_cnpj, nome_razao_social, nome_fantasia, situacao, logo_base64, tv_theme, tv_audio_enabled, tv_call_sound, tv_video_muted, tv_video_paused, admin_playlist_filter
+            SELECT cpf_cnpj, nome_razao_social, nome_fantasia, situacao, logo_base64, tv_theme, tv_audio_enabled, tv_call_sound, tv_video_muted, tv_video_paused, admin_playlist_filter,
+                   tts_enabled, tts_voice, tts_speed, tts_volume
             FROM tenants
             WHERE cpf_cnpj = %s
             """,
@@ -605,6 +610,12 @@ def fetch_state() -> Dict[str, Any]:
         merged_history = merged_history[:10]
     else:
         merged_history = [c for c in (normalize_call(r) for r in legacy_history) if c][:10]
+
+    # Garantir que campos Decimal do tenant sejam float (JSON serializable)
+    if tenant:
+        for _f in ("tts_speed", "tts_volume"):
+            if _f in tenant and tenant[_f] is not None:
+                tenant[_f] = float(tenant[_f])
 
     return {
         "tenant_cpf_cnpj": tenant_cpf_cnpj,
@@ -877,6 +888,214 @@ def dashboard_history(
             "completed_at": r["completed_at"].isoformat() if r.get("completed_at") else None,
         }
     return [row_to_dict(r) for r in rows]
+
+
+@app.get("/tenant/dashboard/kpis")
+def dashboard_kpis(
+    period: str = Query(default="30d", description="7d ou 30d"),
+    authorization: Optional[str] = Header(default=None),
+):
+    """KPIs para cards do dashboard: preferenciais x normais, maior/menor tempo, operador destaque, menor tempo médio."""
+    payload = require_jwt(authorization)
+    require_role(payload, {"admin"})
+    tenant_cpf_cnpj = tenant_from_jwt(payload)
+    days = 7 if period == "7d" else 30
+    date_filter = "AND completed_at >= DATE_SUB(CURDATE(), INTERVAL %s DAY)"
+
+    with db_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        # Preferenciais x Normais
+        cur.execute(
+            """
+            SELECT priority, COUNT(*) AS n
+            FROM tickets
+            WHERE tenant_cpf_cnpj = %s AND status = 'completed'
+            """ + date_filter + """
+            GROUP BY priority
+            """,
+            (tenant_cpf_cnpj, days),
+        )
+        by_priority = {r["priority"]: int(r["n"] or 0) for r in cur.fetchall()}
+        preferential_count = by_priority.get("preferential", 0)
+        normal_count = by_priority.get("normal", 0)
+
+        # Maior e menor tempo de atendimento (segundos entre service_started_at e completed_at)
+        cur.execute(
+            """
+            SELECT
+              MAX(TIMESTAMPDIFF(SECOND, service_started_at, completed_at)) AS max_sec,
+              MIN(TIMESTAMPDIFF(SECOND, service_started_at, completed_at)) AS min_sec
+            FROM tickets
+            WHERE tenant_cpf_cnpj = %s AND status = 'completed'
+              AND service_started_at IS NOT NULL AND completed_at IS NOT NULL
+            """ + date_filter,
+            (tenant_cpf_cnpj, days),
+        )
+        row = cur.fetchone() or {}
+        max_duration_seconds = int(row.get("max_sec") or 0)
+        min_duration_seconds = int(row.get("min_sec") or 0)
+
+        # Operador com mais atendimentos (destaque / maior quantidade)
+        cur.execute(
+            """
+            SELECT operator_id, operator_name, COUNT(*) AS completed_count
+            FROM tickets
+            WHERE tenant_cpf_cnpj = %s AND status = 'completed' AND operator_id IS NOT NULL
+            """ + date_filter + """
+            GROUP BY operator_id, operator_name
+            ORDER BY completed_count DESC
+            LIMIT 1
+            """,
+            (tenant_cpf_cnpj, days),
+        )
+        top_row = cur.fetchone()
+        top_operator_name = (top_row.get("operator_name") or "—") if top_row else "—"
+        top_operator_count = int((top_row or {}).get("completed_count") or 0)
+
+        # Operador com menor tempo médio de atendimento (só quem tem pelo menos 1 atendimento com duração)
+        cur.execute(
+            """
+            SELECT t.operator_id, t.operator_name,
+                   AVG(TIMESTAMPDIFF(SECOND, t.service_started_at, t.completed_at)) AS avg_sec
+            FROM tickets t
+            WHERE t.tenant_cpf_cnpj = %s AND t.status = 'completed'
+              AND t.service_started_at IS NOT NULL AND t.completed_at IS NOT NULL
+              AND t.operator_id IS NOT NULL
+              AND t.completed_at >= DATE_SUB(CURDATE(), INTERVAL %s DAY)
+            GROUP BY t.operator_id, t.operator_name
+            HAVING COUNT(*) >= 1
+            ORDER BY avg_sec ASC
+            LIMIT 1
+            """,
+            (tenant_cpf_cnpj, days),
+        )
+        fast_row = cur.fetchone()
+        fastest_operator_name = (fast_row.get("operator_name") or "—") if fast_row else "—"
+        fastest_operator_avg_seconds = int((fast_row or {}).get("avg_sec") or 0)
+
+    return {
+        "period": period,
+        "preferential_count": preferential_count,
+        "normal_count": normal_count,
+        "max_duration_seconds": max_duration_seconds,
+        "min_duration_seconds": min_duration_seconds,
+        "top_operator_name": top_operator_name,
+        "top_operator_count": top_operator_count,
+        "fastest_operator_name": fastest_operator_name,
+        "fastest_operator_avg_seconds": fastest_operator_avg_seconds,
+    }
+
+
+@app.get("/tenant/dashboard/live")
+def dashboard_live(authorization: Optional[str] = Header(default=None)):
+    """Monitor ao vivo: fila atual, atendimentos de hoje, médias e breakdown por hora."""
+    payload = require_jwt(authorization)
+    require_role(payload, {"admin"})
+    tenant_cpf_cnpj = tenant_from_jwt(payload)
+
+    with db_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+
+        # Fila atual (aguardando)
+        cur.execute(
+            """
+            SELECT priority, COUNT(*) AS n
+            FROM tickets
+            WHERE tenant_cpf_cnpj = %s AND status = 'waiting'
+            GROUP BY priority
+            """,
+            (tenant_cpf_cnpj,),
+        )
+        queue_by_priority = {r["priority"]: int(r["n"] or 0) for r in cur.fetchall()}
+
+        # Contagens do dia por status
+        cur.execute(
+            """
+            SELECT status, COUNT(*) AS n
+            FROM tickets
+            WHERE tenant_cpf_cnpj = %s AND DATE(issued_at) = CURDATE()
+            GROUP BY status
+            """,
+            (tenant_cpf_cnpj,),
+        )
+        today_by_status = {r["status"]: int(r["n"] or 0) for r in cur.fetchall()}
+
+        # Tempo médio de espera hoje (issued_at → called_at)
+        cur.execute(
+            """
+            SELECT AVG(TIMESTAMPDIFF(SECOND, issued_at, called_at)) AS avg_wait
+            FROM tickets
+            WHERE tenant_cpf_cnpj = %s AND called_at IS NOT NULL
+              AND DATE(issued_at) = CURDATE()
+            """,
+            (tenant_cpf_cnpj,),
+        )
+        row = cur.fetchone() or {}
+        avg_wait = int(row.get("avg_wait") or 0)
+
+        # Tempo médio de atendimento hoje (service_started_at → completed_at)
+        cur.execute(
+            """
+            SELECT AVG(TIMESTAMPDIFF(SECOND, service_started_at, completed_at)) AS avg_svc
+            FROM tickets
+            WHERE tenant_cpf_cnpj = %s AND status = 'completed'
+              AND service_started_at IS NOT NULL AND completed_at IS NOT NULL
+              AND DATE(issued_at) = CURDATE()
+            """,
+            (tenant_cpf_cnpj,),
+        )
+        row = cur.fetchone() or {}
+        avg_service = int(row.get("avg_svc") or 0)
+
+        # Breakdown por hora (últimas 12h, baseado em completed_at e no_show/called)
+        cur.execute(
+            """
+            SELECT
+              HOUR(COALESCE(completed_at, called_at)) AS hora,
+              SUM(status = 'completed') AS atendidos,
+              SUM(status IN ('no_show', 'cancelled')) AS desistentes
+            FROM tickets
+            WHERE tenant_cpf_cnpj = %s
+              AND DATE(issued_at) = CURDATE()
+              AND (completed_at IS NOT NULL OR called_at IS NOT NULL)
+            GROUP BY hora
+            ORDER BY hora ASC
+            """,
+            (tenant_cpf_cnpj,),
+        )
+        hourly_rows = cur.fetchall()
+
+    pref_queue = queue_by_priority.get("preferential", 0)
+    norm_queue = queue_by_priority.get("normal", 0)
+    attended = today_by_status.get("completed", 0)
+    in_service = today_by_status.get("called", 0) + today_by_status.get("in_service", 0)
+    no_show = today_by_status.get("no_show", 0)
+    cancelled = today_by_status.get("cancelled", 0)
+
+    hourly = [
+        {
+            "hour": f"{int(r['hora']):02d}:00",
+            "attended": int(r["atendidos"] or 0),
+            "desistentes": int(r["desistentes"] or 0),
+        }
+        for r in hourly_rows
+        if r["hora"] is not None
+    ]
+
+    return {
+        "queue": {"preferential": pref_queue, "normal": norm_queue, "total": pref_queue + norm_queue},
+        "today": {
+            "attended": attended,
+            "in_service": in_service,
+            "no_show": no_show,
+            "cancelled": cancelled,
+            "desistentes": no_show + cancelled,
+        },
+        "avg_wait_seconds": avg_wait,
+        "avg_service_seconds": avg_service,
+        "hourly": hourly,
+        "server_time": utc_now().isoformat(),
+    }
 
 
 # ============================================================
@@ -1379,7 +1598,7 @@ def _tts_cache_dir() -> str:
     return os.path.join(os.getcwd(), ".run", "tts_cache")
 
 
-def _format_call_text(ticket_code: str, counter_name: str) -> str:
+def _format_call_text(ticket_code: str, service_name: str, counter_name: str = "") -> str:
     parts = []
     for ch in (ticket_code or "").upper():
         if ch.isdigit():
@@ -1387,12 +1606,54 @@ def _format_call_text(ticket_code: str, counter_name: str) -> str:
         elif ch.isalpha():
             parts.append(ch)
     ticket_text = " ".join(parts) if parts else ticket_code
-    return f"Atenção! Senha {ticket_text}. Dirija-se ao {counter_name}."
+    label = service_name.strip() if service_name and service_name.strip() else counter_name.strip()
+    return f"Senha {ticket_text}, {label}." if label else f"Senha {ticket_text}."
+
+
+def _prefetch_tts(tenant_cpf_cnpj: str, ticket_code: str, service_name: str, counter_name: str) -> None:
+    """Pré-gera o MP3 do TTS em background para eliminar latência na TV."""
+    def _run():
+        try:
+            with db_conn() as conn:
+                cur = conn.cursor(dictionary=True)
+                cur.execute(
+                    "SELECT tts_enabled, tts_voice, tts_speed, tts_volume FROM tenants WHERE cpf_cnpj = %s",
+                    (tenant_cpf_cnpj,),
+                )
+                row = cur.fetchone()
+            if not row or not row.get("tts_enabled"):
+                return
+            voice = (row.get("tts_voice") or "pf_dora").strip() or "pf_dora"
+            speed = max(0.25, min(4.0, float(row.get("tts_speed") or 0.85)))
+            volume = max(0.1, min(4.0, float(row.get("tts_volume") or 1.0)))
+            text = _format_call_text(ticket_code, service_name, counter_name)
+            cache_key = hashlib.md5(f"{text}|{voice}|{speed:.2f}|{volume:.2f}".encode()).hexdigest()
+            cache_file = os.path.join(_tts_cache_dir(), f"{cache_key}.mp3")
+            if os.path.isfile(cache_file):
+                return
+            os.makedirs(_tts_cache_dir(), exist_ok=True)
+            payload = json.dumps({
+                "model": "kokoro",
+                "input": text,
+                "voice": voice,
+                "response_format": "mp3",
+                "speed": speed,
+                "volume_multiplier": volume,
+            }).encode()
+            req = Request(_TTS_KOKORO_URL, data=payload, headers={"Content-Type": "application/json"})
+            with urlopen(req, timeout=15) as resp:
+                audio_bytes = resp.read()
+            with open(cache_file, "wb") as f:
+                f.write(audio_bytes)
+        except Exception:
+            pass  # Falha silenciosa — o endpoint /api/tts/call tentará de novo quando a TV pedir
+
+    threading.Thread(target=_run, daemon=True).start()
 
 
 @app.get("/api/tts/call")
-def get_tts_call(ticket_code: str, counter_name: str, voice: str = "pf_dora",
-                 speed: float = 0.85, volume: float = 1.0):
+def get_tts_call(ticket_code: str, counter_name: str = "", service_name: str = "",
+                 voice: str = "pf_dora", speed: float = 0.85, volume: float = 1.0):
     """Gera (e cacheia) MP3 com anúncio de voz via Kokoro TTS."""
     if voice not in _TTS_VALID_VOICES:
         voice = "pf_dora"
@@ -1400,7 +1661,7 @@ def get_tts_call(ticket_code: str, counter_name: str, voice: str = "pf_dora",
     volume = max(0.1, min(4.0, volume))
     cache_dir = _tts_cache_dir()
     os.makedirs(cache_dir, exist_ok=True)
-    text = _format_call_text(ticket_code, counter_name)
+    text = _format_call_text(ticket_code, service_name, counter_name)
     cache_key = hashlib.md5(f"{text}|{voice}|{speed:.2f}|{volume:.2f}".encode()).hexdigest()
     cache_file = os.path.join(cache_dir, f"{cache_key}.mp3")
     if not os.path.isfile(cache_file):
@@ -1873,11 +2134,17 @@ def delete_service(payload_in: Dict[str, Any], authorization: Optional[str] = He
     if not sid:
         raise HTTPException(status_code=400, detail="id is required")
 
-    with db_conn() as conn:
-        cur = conn.cursor()
-        cur.execute(
-            "DELETE FROM services WHERE id = %s AND tenant_cpf_cnpj = %s",
-            (sid, tenant_cpf_cnpj),
+    try:
+        with db_conn() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                "DELETE FROM services WHERE id = %s AND tenant_cpf_cnpj = %s",
+                (sid, tenant_cpf_cnpj),
+            )
+    except mysql.connector.IntegrityError:
+        raise HTTPException(
+            status_code=409,
+            detail="Não é possível excluir este serviço pois há senhas vinculadas a ele. Desative-o em vez de excluir.",
         )
     return {"ok": True}
 
@@ -2227,6 +2494,7 @@ def emit_ticket_for_service(
         "service_name": service["name"],
         "priority": priority,
         "position_in_queue": position,
+        "issued_at": now,
     }
 
 
@@ -2250,6 +2518,99 @@ def emit_ticket(payload_in: Dict[str, Any], authorization: Optional[str] = Heade
     with db_conn() as conn:
         out = emit_ticket_for_service(conn, tenant_cpf_cnpj, service_id, priority_override=priority)
     return {"ok": True, **out}
+
+
+# ============================================================
+# Acompanhamento de senha (público – link do QR Code do recibo)
+# Mesma porta 7071, não exige autenticação
+# ============================================================
+
+
+@app.get("/acompanhar/{ticket_id}", response_class=HTMLResponse)
+def acompanhar_ticket(ticket_id: str):
+    """
+    Página pública de acompanhamento da senha (acessada pelo QR Code do recibo).
+    Mostra status, posição na fila e guichê quando chamada.
+    """
+    with db_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            """
+            SELECT id, tenant_cpf_cnpj, ticket_code, service_name, priority, status,
+                   issued_at, counter_name, called_at
+            FROM tickets
+            WHERE id = %s
+            LIMIT 1
+            """,
+            (ticket_id.strip(),),
+        )
+        row = cur.fetchone()
+
+    if not row:
+        return HTMLResponse(
+            content="""<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Senha não encontrada</title><style>body{font-family:sans-serif;max-width:360px;margin:2rem auto;padding:1rem;text-align:center;}
+h1{font-size:1.25rem;color:#666;}</style></head><body><h1>Senha não encontrada</h1><p>Verifique o link ou tente novamente.</p></body></html>""",
+            status_code=404,
+        )
+
+    status = row.get("status") or "waiting"
+    ticket_code = row.get("ticket_code") or "—"
+    service_name = row.get("service_name") or ""
+    counter_name = row.get("counter_name") or ""
+    tenant_cpf_cnpj = row.get("tenant_cpf_cnpj") or ""
+
+    # Posição na fila (somente se ainda aguardando)
+    position = None
+    if status == "waiting":
+        with db_conn() as conn:
+            cur = conn.cursor()
+            cur.execute(
+                """
+                SELECT COUNT(*) FROM tickets
+                WHERE tenant_cpf_cnpj = %s AND status = 'waiting' AND issued_at <= (SELECT issued_at FROM tickets WHERE id = %s)
+                """,
+                (tenant_cpf_cnpj, ticket_id.strip()),
+            )
+            position = (cur.fetchone() or (0,))[0]
+
+    status_msg = {
+        "waiting": "Aguardando na fila",
+        "called": "Chamada – dirija-se ao guichê",
+        "in_service": "Em atendimento",
+        "completed": "Atendimento finalizado",
+        "no_show": "Não compareceu",
+        "cancelled": "Cancelada",
+    }.get(status, status)
+
+    html = f"""<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Acompanhamento – {ticket_code}</title>
+  <style>
+    body {{ font-family: system-ui, sans-serif; max-width: 360px; margin: 2rem auto; padding: 1rem; background: #f5f5f5; }}
+    .card {{ background: #fff; border-radius: 12px; padding: 1.5rem; box-shadow: 0 2px 8px rgba(0,0,0,.08); }}
+    .code {{ font-size: 2rem; font-weight: 800; letter-spacing: .1em; color: #0d6efd; margin: 0.5rem 0; }}
+    .status {{ font-weight: 600; color: #198754; margin: 0.5rem 0; }}
+    .status.called, .status.in_service {{ color: #0d6efd; }}
+    .meta {{ color: #666; font-size: 0.9rem; margin-top: 1rem; }}
+    p {{ margin: 0.25rem 0; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <p class="meta">Sua senha</p>
+    <p class="code">{ticket_code}</p>
+    <p class="meta">{service_name}</p>
+    <p class="status">{status_msg}</p>
+    {f'<p class="meta">Posição na fila: {position}ª</p>' if position is not None else ''}
+    {f'<p class="meta">Guichê: {counter_name}</p>' if counter_name else ''}
+  </div>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
 
 
 # ============================================================
@@ -2289,6 +2650,35 @@ def totem_emit(payload_in: Dict[str, Any], authorization: Optional[str] = Header
 
     with db_conn() as conn:
         out = emit_ticket_for_service(conn, tenant_cpf_cnpj, service_id)
+
+    # Nome do tenant para o recibo (opcional)
+    tenant_name = None
+    try:
+        with db_conn() as conn:
+            cur = conn.cursor(dictionary=True)
+            cur.execute("SELECT nome_fantasia, nome_razao_social FROM tenants WHERE cpf_cnpj = %s LIMIT 1", (tenant_cpf_cnpj,))
+            row = cur.fetchone()
+            if row:
+                tenant_name = (row.get("nome_fantasia") or row.get("nome_razao_social") or "").strip() or None
+    except Exception:
+        pass
+
+    # Logo do tenant no recibo (path do arquivo). Desativado por padrão para evitar travamento na impressora.
+    logo_path = os.environ.get("TICKET_LOGO_PATH", "").strip()
+    if logo_path and os.path.isfile(logo_path):
+        pass  # usa logo_path
+    else:
+        logo_path = None
+    ticket_print_data = {**out, "tenant_name": tenant_name, "logo_path": logo_path}
+
+    # Impressão térmica (ESC/POS): envia para /dev/usb/lp1 se PRINTER_ENABLED não for 0
+    printed = False
+    if os.environ.get("PRINTER_ENABLED", "1") != "0":
+        printed = print_ticket(
+            ticket_print_data,
+            base_url=os.environ.get("TOTEM_BASE_URL"),
+            device=os.environ.get("PRINTER_DEVICE") or "/dev/usb/lp1",
+        )
 
     # Minimal print text (raw). Later we will add DB audit + server file write.
     print_text = (
@@ -2343,7 +2733,7 @@ def totem_emit(payload_in: Dict[str, Any], authorization: Optional[str] = Header
         # keep emitting working even if audit fails
         pass
 
-    return {"ok": True, **out, "print_text": print_text, "print_job_id": print_job_id, "saved_path": saved_path}
+    return {"ok": True, **out, "print_text": print_text, "print_job_id": print_job_id, "saved_path": saved_path, "printed": printed}
 
 
 @app.get("/tickets/queue")
@@ -2471,6 +2861,7 @@ def call_ticket(ticket_id: str, payload_in: Dict[str, Any], authorization: Optio
         if ticket["status"] not in ("waiting", "called"):
             raise HTTPException(status_code=400, detail=f"Ticket cannot be called (status: {ticket['status']})")
 
+        is_recall = ticket["status"] == "called"
         now = utc_now()
         cur.execute(
             """
@@ -2483,6 +2874,8 @@ def call_ticket(ticket_id: str, payload_in: Dict[str, Any], authorization: Optio
         )
 
         # Criar evento SSE para TV
+        # Rechamadas usam "ticket.recalled" para bypassar deduplicação na TV
+        event_type = "ticket.recalled" if is_recall else "ticket.called"
         event_id = str(uuid.uuid4())
         event_payload = {
             "call": {
@@ -2493,6 +2886,7 @@ def call_ticket(ticket_id: str, payload_in: Dict[str, Any], authorization: Optio
                 "counter_name": counter["name"],
                 "operator_name": operator_name,
                 "called_at": now.isoformat(),
+                "is_recall": is_recall,
             }
         }
         cur.execute(
@@ -2500,10 +2894,11 @@ def call_ticket(ticket_id: str, payload_in: Dict[str, Any], authorization: Optio
             INSERT INTO events (event_id, event_type, payload_json, created_at, synced)
             VALUES (%s, %s, %s, %s, 0)
             """,
-            (event_id, "ticket.called", json.dumps(event_payload, ensure_ascii=False), now),
+            (event_id, event_type, json.dumps(event_payload, ensure_ascii=False), now),
         )
 
-    return {"ok": True, "ticket_id": ticket_id, "status": "called", "counter_name": counter["name"]}
+    _prefetch_tts(tenant_cpf_cnpj, ticket["ticket_code"], ticket["service_name"] or "", counter["name"])
+    return {"ok": True, "ticket_id": ticket_id, "status": "called", "counter_name": counter["name"], "is_recall": is_recall}
 
 
 @app.post("/tickets/{ticket_id}/start")
@@ -2729,6 +3124,7 @@ def call_next_ticket(payload_in: Dict[str, Any], authorization: Optional[str] = 
             (event_id, "ticket.called", json.dumps(event_payload, ensure_ascii=False), now),
         )
 
+    _prefetch_tts(tenant_cpf_cnpj, ticket["ticket_code"], ticket["service_name"] or "", counter["name"])
     return {
         "ok": True,
         "ticket_id": ticket["id"],
@@ -3009,14 +3405,16 @@ def tv_events(
                             (seen_event_id,),
                         )
                     else:
+                        # Sem Last-Event-ID: nova conexão (F5/reload).
+                        # Buscar apenas o evento mais recente para usar como cursor,
+                        # sem reenviar histórico (evita reproduzir áudio de chamadas antigas).
                         cur.execute(
-                            """
-                            SELECT event_id, event_type, payload_json
-                            FROM events
-                            ORDER BY created_at ASC
-                            LIMIT 50
-                            """
+                            "SELECT event_id FROM events ORDER BY created_at DESC LIMIT 1"
                         )
+                        latest = cur.fetchone()
+                        if latest:
+                            seen_event_id = latest["event_id"]
+                        cur.execute("SELECT 1 WHERE 1=0")  # resultado vazio — próximo loop pega eventos novos
                     rows = cur.fetchall()
 
                 emitted_any = False

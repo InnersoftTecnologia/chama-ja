@@ -13,8 +13,10 @@
 <body>
   <header class="header">
     <div class="header-inner">
-      <h1 class="logo">Chama Já</h1>
-      <p class="tagline">Painel principal — acesse as interfaces</p>
+      <div class="header-brand">
+        <img src="images/logo_chama_ja.svg" alt="Chama Já" class="logo-img" />
+        <p class="tagline">Painel principal — acesse as interfaces</p>
+      </div>
       <button type="button" class="theme-toggle" id="themeToggle" aria-label="Alternar tema">
         <span class="theme-icon sun" aria-hidden="true">☀️</span>
         <span class="theme-icon moon" aria-hidden="true">🌙</span>
@@ -28,6 +30,10 @@
 
   <footer class="footer">
     <p>Clique em um painel para abrir em nova aba</p>
+    <div class="footer-powered">
+      <img src="images/innersof_logo.png" alt="Innersoft" class="footer-logo" />
+      <span class="footer-powered-text">Desenvolvido por Innersoft</span>
+    </div>
   </footer>
 
   <script src="dashboard.js"></script>

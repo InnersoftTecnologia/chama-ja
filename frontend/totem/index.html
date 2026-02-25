@@ -18,18 +18,10 @@
 
   <!-- Header -->
   <header class="totem-header">
-    <div class="header-brand">
-      <div id="logoWrap" class="brand-logo d-none">
-        <img id="tenantLogo" alt="Logo" />
-      </div>
-      <div class="brand-text">
-        <h1 id="tenantName">FERREIRA COSTA</h1>
-        <p id="tenantSubtitle">HOME CENTER</p>
-      </div>
-    </div>
+    <h1 class="header-title">RETIRE SUA SENHA</h1>
     <div class="header-clock">
-      <div id="clock" class="clock-time">18:47:50</div>
-      <div id="date" class="clock-date">domingo, 18 de janeiro de 2026</div>
+      <div id="clock" class="clock-time">--:--:--</div>
+      <div id="date" class="clock-date"></div>
     </div>
   </header>
 
@@ -43,28 +35,40 @@
       <p class="mt-3">Carregando serviços...</p>
     </div>
 
-    <!-- Services Grid -->
-    <div id="servicesContainer" class="services-container d-none">
-      <!-- Tab Headers -->
-      <div class="tab-headers">
-        <div class="tab-header tab-normal">
-          <span>ATENDIMENTO</span>
-          <span>NORMAL</span>
+    <!-- Tela 1: Seleção do tipo de atendimento (NORMAL x PREFERENCIAL) -->
+    <div id="choiceScreen" class="choice-screen d-none">
+      <!-- Branding do tenant -->
+      <div class="branding-area">
+        <div id="logoWrap" class="branding-logo-wrap">
+          <img id="tenantLogo" src="images/logo_tenant.svg" alt="Logo" class="branding-logo-img" />
         </div>
-        <div class="tab-header tab-priority">
-          <span>ATENDIMENTO</span>
-          <span>PREFERENCIAL</span>
+        <div id="tenantNameWrap" class="branding-name-wrap d-none">
+          <span id="tenantName"></span>
+          <small id="tenantSubtitle"></small>
         </div>
       </div>
+      <p class="choice-screen-title">Tipo de Atendimento</p>
+      <div class="choice-buttons">
+        <button id="btnNormal" type="button" class="choice-btn choice-btn-normal">
+          <span class="material-icons">payments</span>
+          <span class="choice-btn-label">Normal</span>
+        </button>
+        <button id="btnPreferential" type="button" class="choice-btn choice-btn-priority">
+          <span class="material-icons">accessible</span>
+          <span class="choice-btn-label">Preferencial</span>
+        </button>
+      </div>
+    </div>
 
-      <!-- Services Grid 2x2 -->
-      <div class="services-grid">
-        <div id="normalServices" class="services-column">
-          <!-- Normal services -->
-        </div>
-        <div id="preferentialServices" class="services-column">
-          <!-- Preferential services -->
-        </div>
+    <!-- Tela 2: Qual serviço deseja atendimento? (lista dinâmica) -->
+    <div id="servicesScreen" class="services-screen d-none">
+      <button id="btnBack" type="button" class="btn-back" title="Voltar">
+        <span class="material-icons">arrow_back</span>
+        <span>Voltar</span>
+      </button>
+      <h2 class="services-screen-title">Qual serviço deseja atendimento?</h2>
+      <div id="servicesList" class="services-list">
+        <!-- Cards dos serviços (preenchido via JS) -->
       </div>
     </div>
 
@@ -77,12 +81,11 @@
 
   <!-- Footer -->
   <footer class="totem-footer">
-    <p class="footer-text">Toque no serviço desejado para emitir sua senha.</p>
-    <div class="footer-tip">
-      <span class="material-icons">info</span>
-      <span>Dica: Se você for preferencial, escolha as opções em laranja.</span>
-    </div>
     <p id="statusText" class="footer-status"></p>
+    <div class="totem-footer-powered">
+      <img src="images/innersof_logo.png" alt="Innersoft" class="totem-footer-innersoft" />
+      <span>Desenvolvido por Innersoft Tecnologia Ltda &nbsp;&bull;&nbsp; CNPJ: 52.370.680/0001-39 &nbsp;&bull;&nbsp; &copy; <span id="footerYear"></span></span>
+    </div>
   </footer>
 
   <!-- Theme Toggle -->

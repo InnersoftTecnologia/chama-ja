@@ -70,6 +70,9 @@ EDGE_UVICORN_TIMEOUT_KEEP_ALIVE="${EDGE_UVICORN_TIMEOUT_KEEP_ALIVE:-15}"
 EDGE_UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN="${EDGE_UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN:-5}"
 EDGE_UVICORN_EXTRA_ARGS="${EDGE_UVICORN_EXTRA_ARGS:-}"
 
+# Python para servidores HTTP estáticos (3.7+ para --directory). No Rocky 8 use: PYTHON_HTTP=python3.9
+PYTHON_HTTP="${PYTHON_HTTP:-python3}"
+
 # Cores para o output
 GREEN='\033[0;32m'
 RED='\033[0;31m'
@@ -236,6 +239,25 @@ kill_by_pidfile() {
     rm -f "$pid_file" || true
 }
 
+kill_edge_hard() {
+    # Para o edge de forma garantida: pid file + grep de processos + fuser
+    kill_by_pidfile "$EDGE_PID_FILE"
+    # Mata supervisor loop (sh -c) e uvicorn que ainda tenham a porta no nome
+    local pids
+    pids=$(ps aux | grep -E "uvicorn.*${EDGE_PORT}|sh -c.*${EDGE_PORT}" | grep -v grep | awk '{print $2}' || true)
+    if [ -n "$pids" ]; then
+        # shellcheck disable=SC2086
+        kill -9 $pids 2>/dev/null || true
+    fi
+    sleep 1
+    # Último recurso: fuser na porta
+    if port_is_listening "$EDGE_PORT"; then
+        fuser -k "${EDGE_PORT}/tcp" 2>/dev/null || true
+        sleep 1
+    fi
+    rm -f "$EDGE_PID_FILE" || true
+}
+
 kokoro_is_up() {
     # Verifica se o Kokoro TTS está respondendo na porta configurada.
     local code
@@ -319,7 +341,8 @@ start_edge() {
         export DB_HOST DB_PORT DB_USER DB_PASSWORD DB_NAME EDGE_DEVICE_TOKEN EDGE_PORT EDGE_HOST PUBLIC_HOST
         # Run under a tiny supervisor loop so if uvicorn dies it comes back automatically.
         # Important: we keep PID file pointing to the wrapper, and stop() kills the process group.
-        nohup bash -c "
+        # sg lp = roda com grupo lp para poder escrever na impressora térmica (/dev/usb/lp1)
+        nohup sg lp -c "
           set -e
           cd \"$ROOT_DIR\"
           export PATH=\"$ROOT_DIR/.venv/bin:\$PATH\"
@@ -366,7 +389,7 @@ start_dashboard() {
     echo "Logs: $DASHBOARD_LOG_FILE"
     (
         cd "$ROOT_DIR"
-        nohup python3 -m http.server "$DASHBOARD_PORT" --directory "${ROOT_DIR}/frontend/dashboard" >"$DASHBOARD_LOG_FILE" 2>&1 &
+        nohup ${PYTHON_HTTP} -m http.server "$DASHBOARD_PORT" --directory "${ROOT_DIR}/frontend/dashboard" >"$DASHBOARD_LOG_FILE" 2>&1 &
         echo $! > "$DASHBOARD_PID_FILE"
     )
     sleep 0.6
@@ -397,7 +420,7 @@ start_tv() {
     echo "Logs: $TV_LOG_FILE"
     (
         cd "$ROOT_DIR"
-        nohup python3 -m http.server "$TV_PORT" --directory "${ROOT_DIR}/frontend/tv" >"$TV_LOG_FILE" 2>&1 &
+        nohup ${PYTHON_HTTP} -m http.server "$TV_PORT" --directory "${ROOT_DIR}/frontend/tv" >"$TV_LOG_FILE" 2>&1 &
         echo $! > "$TV_PID_FILE"
     )
     sleep 0.6
@@ -428,7 +451,7 @@ start_test_ui() {
     echo "Logs: $TEST_LOG_FILE"
     (
         cd "$ROOT_DIR"
-        nohup python3 -m http.server "$TEST_PORT" --directory "${ROOT_DIR}/frontend/operator-test" >"$TEST_LOG_FILE" 2>&1 &
+        nohup ${PYTHON_HTTP} -m http.server "$TEST_PORT" --directory "${ROOT_DIR}/frontend/operator-test" >"$TEST_LOG_FILE" 2>&1 &
         echo $! > "$TEST_PID_FILE"
     )
     sleep 0.6
@@ -459,7 +482,7 @@ start_admin_ui() {
     echo "Logs: $ADMIN_LOG_FILE"
     (
         cd "$ROOT_DIR"
-        nohup python3 -m http.server "$ADMIN_PORT" --directory "${ROOT_DIR}/frontend/admin-tenant" >"$ADMIN_LOG_FILE" 2>&1 &
+        nohup ${PYTHON_HTTP} -m http.server "$ADMIN_PORT" --directory "${ROOT_DIR}/frontend/admin-tenant" >"$ADMIN_LOG_FILE" 2>&1 &
         echo $! > "$ADMIN_PID_FILE"
     )
     sleep 0.6
@@ -490,7 +513,7 @@ start_operator_ui() {
     echo "Logs: $OP_LOG_FILE"
     (
         cd "$ROOT_DIR"
-        nohup python3 -m http.server "$OP_PORT" --directory "${ROOT_DIR}/frontend/operator" >"$OP_LOG_FILE" 2>&1 &
+        nohup ${PYTHON_HTTP} -m http.server "$OP_PORT" --directory "${ROOT_DIR}/frontend/operator" >"$OP_LOG_FILE" 2>&1 &
         echo $! > "$OP_PID_FILE"
     )
     sleep 0.6
@@ -521,7 +544,7 @@ start_totem_ui() {
     echo "Logs: $TOTEM_LOG_FILE"
     (
         cd "$ROOT_DIR"
-        nohup python3 -m http.server "$TOTEM_PORT" --directory "${ROOT_DIR}/frontend/totem" >"$TOTEM_LOG_FILE" 2>&1 &
+        nohup ${PYTHON_HTTP} -m http.server "$TOTEM_PORT" --directory "${ROOT_DIR}/frontend/totem" >"$TOTEM_LOG_FILE" 2>&1 &
         echo $! > "$TOTEM_PID_FILE"
     )
     sleep 0.6
@@ -542,15 +565,14 @@ stop_all() {
     kill_by_pidfile "$OP_PID_FILE"
     kill_by_pidfile "$TOTEM_PID_FILE"
     kill_by_pidfile "$DASHBOARD_PID_FILE"
-    kill_by_pidfile "$EDGE_PID_FILE"
+    kill_edge_hard
     echo -e "${GREEN}OK.${NC}"
 }
 
 start_all() {
-    # 1) Edge é obrigatório: sem API os outros não funcionam. Força reinício do Edge para evitar estado travado.
+    # 1) Edge é obrigatório: sem API os outros não funcionam. Força reinício garantido.
     echo -e "${BLUE}Parando Edge (forçar reinício)...${NC}"
-    kill_by_pidfile "$EDGE_PID_FILE"
-    sleep 1
+    kill_edge_hard
     if ! start_edge; then
         echo -e "${RED}Edge não iniciou. Abortando; os outros serviços não foram iniciados.${NC}"
         echo "Verifique: $EDGE_LOG_FILE"

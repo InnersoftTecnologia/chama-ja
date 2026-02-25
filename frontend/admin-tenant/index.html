@@ -74,6 +74,12 @@
         color: #fff;
         font-weight: 700;
       }
+      .navbar-logo-chamaja {
+        height: 36px;
+        width: auto;
+        display: block;
+        object-fit: contain;
+      }
       .navbar-amlic .btn-theme-toggle {
         background: rgba(255, 255, 255, 0.15);
         border: 1px solid rgba(255, 255, 255, 0.25);
@@ -244,10 +250,60 @@
         font-size: clamp(1.6rem, 2.6vw, 2.2rem);
         letter-spacing: -0.02em;
       }
+      .login-tenant-logo {
+        height: 40px;
+        width: auto;
+        object-fit: contain;
+      }
       .login-hero-logo {
         max-width: min(320px, 80%);
         height: auto;
         filter: drop-shadow(0 10px 18px rgba(0,0,0,0.10));
+      }
+      .login-hero-logo-innersoft {
+        max-width: min(180px, 50%);
+        opacity: 0.9;
+      }
+      .login-hero-three-logos {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 280px;
+      }
+      .login-logo-center {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem 0;
+      }
+      .login-logo-tenant {
+        max-width: min(280px, 85%);
+        max-height: 140px;
+        width: auto;
+        height: auto;
+        object-fit: contain;
+        filter: drop-shadow(0 8px 20px rgba(0,0,0,0.12));
+      }
+      .login-logo-bottom-row {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        width: 100%;
+        gap: 1rem;
+        padding-top: 1rem;
+      }
+      .login-logo-discreet { text-align: center; opacity: 0.85; }
+      .login-logo-chamaja-wrap .login-logo-chamaja {
+        height: 32px;
+        width: auto;
+        object-fit: contain;
+      }
+      .login-logo-innersoft-wrap .login-hero-logo-innersoft {
+        max-width: 120px;
+        height: auto;
+        object-fit: contain;
       }
 
       /* Branding upload area (like screenshot) */
@@ -476,6 +532,7 @@
       .metric-accent-cyan::before { background: #00a7c7; }
       .metric-accent-green::before { background: #1f9d55; }
       .metric-accent-purple::before { background: #6A4C93; }
+      .metric-accent-red::before { background: #e53e3e; }
       .metric-value {
         font-size: 1.8rem;
         font-weight: 800;
@@ -507,6 +564,47 @@
       .dash-top-op-rank { font-weight: 800; color: var(--amlic-blue); margin-right: 8px; min-width: 20px; }
       .dash-top-op-name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
       .dash-top-op-count { font-weight: 700; color: var(--text-primary); }
+
+      /* KPIs estilo Power BI */
+      .kpi-card {
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-light);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      .kpi-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-medium); }
+      [data-bs-theme="dark"] .kpi-card {
+        background: rgba(255,255,255,0.06);
+        border-color: rgba(255,255,255,0.12);
+      }
+      .kpi-card-inner { padding: 1rem 1.1rem; position: relative; }
+      .kpi-card-inner::before {
+        content: "";
+        position: absolute;
+        left: 0; top: 0; bottom: 0;
+        width: 4px;
+        border-radius: 4px 0 0 4px;
+      }
+      .kpi-card-pref .kpi-card-inner::before { background: linear-gradient(180deg, #6A4C93 0%, #8B6BA8 100%); }
+      .kpi-card-time-max .kpi-card-inner::before { background: linear-gradient(180deg, #e74c3c 0%, #c0392b 100%); }
+      .kpi-card-time-min .kpi-card-inner::before { background: linear-gradient(180deg, #1f9d55 0%, #27ae60 100%); }
+      .kpi-card-destaque .kpi-card-inner::before { background: linear-gradient(180deg, #F39C12 0%, #e67e22 100%); }
+      .kpi-card-maior-qtd .kpi-card-inner::before { background: linear-gradient(180deg, #52658C 0%, #00a7c7 100%); }
+      .kpi-card-menor-tempo .kpi-card-inner::before { background: linear-gradient(180deg, #00a7c7 0%, #1abc9c 100%); }
+      .kpi-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); font-weight: 600; margin-bottom: 0.35rem; }
+      .kpi-value { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; }
+      .kpi-sub { font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.25rem; }
+      .kpi-pref-split { display: flex; align-items: stretch; margin-top: 0.5rem; height: 10px; border-radius: 6px; overflow: hidden; background: var(--border-color); }
+      [data-bs-theme="dark"] .kpi-pref-split { background: rgba(255,255,255,0.12); }
+      .kpi-pref-bar { min-width: 4px; border-radius: 0; transition: flex 0.4s ease; }
+      .kpi-pref-bar.pref { background: linear-gradient(90deg, #6A4C93, #8B6BA8); }
+      .kpi-pref-bar.norm { background: linear-gradient(90deg, #52658C, #00a7c7); }
+      .kpi-pref-legend { display: flex; gap: 1rem; margin-top: 0.4rem; font-size: 0.75rem; }
+      .kpi-pref-legend span { display: flex; align-items: center; gap: 0.35rem; }
+      .kpi-pref-legend .dot { width: 8px; height: 8px; border-radius: 50%; }
+      .kpi-pref-legend .dot.pref { background: #6A4C93; }
+      .kpi-pref-legend .dot.norm { background: #52658C; }
 
       /* Modal (SCart padrão visual) */
       .modal-padrao-content {
@@ -574,17 +672,16 @@
   <body>
     <!-- Login Modal (shown on load when not authenticated) -->
     <div class="modal fade login-modal" id="loginModal" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered modal-xl modal-fullscreen-sm-down">
+      <div class="modal-dialog modal-dialog-centered modal-md">
         <div class="modal-content">
-          <div class="row g-0">
-            <div class="col-12 col-lg-6 p-4 p-lg-5">
-              <div class="d-flex align-items-center justify-content-between mb-4">
-                <div class="fw-bold">Gerenciamento do Chamador</div>
-                <span class="badge text-bg-light border">Tenant</span>
-              </div>
+          <div class="p-4 p-lg-5">
+            <div class="d-flex align-items-center justify-content-between mb-4">
+              <div class="fw-bold">Gerenciamento do Chamador</div>
+              <img src="images/logo_tenant.png" alt="Ferreira Costa" class="login-tenant-logo" />
+            </div>
 
-              <div class="login-title fw-bold mb-1">Faça seu login</div>
-              <div class="text-body-secondary mb-4">Acesso do administrador</div>
+            <div class="login-title fw-bold mb-1">Acesso ao sistema</div>
+            <div class="text-body-secondary mb-4">Acesso do administrador</div>
 
               <div class="mb-3">
                 <label class="form-label">E-mail</label>
@@ -607,21 +704,6 @@
                 <button id="btnLogin" class="btn-scart-primary">Entrar</button>
               </div>
               <div id="loginStatus" class="text-body-secondary small mt-3"></div>
-            </div>
-
-            <div class="col-12 col-lg-6 d-none d-lg-block">
-              <div class="login-hero h-100 p-5">
-                <div class="login-hero-inner">
-                  <div class="d-flex align-items-center justify-content-center" style="min-height: 280px;">
-                    <img class="login-hero-logo" src="images/innersof_logo.png" alt="Innersoft" />
-                  </div>
-                  <div class="text-center mt-4">
-                    <div class="fw-semibold">Soluções Inteligentes para Gestão de Atendimento</div>
-                    
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -630,7 +712,10 @@
     <!-- Topbar -->
     <nav class="navbar navbar-expand-lg navbar-amlic">
       <div class="container-fluid px-4">
-        <span class="navbar-brand">Gerenciamento do Chamador</span>
+        <div class="d-flex align-items-center gap-3">
+          <img src="images/logo_chama_ja.svg" alt="Chama Já" class="navbar-logo-chamaja" />
+          <span class="navbar-brand mb-0">Gerenciamento do Chamador</span>
+        </div>
         <div class="d-flex align-items-center gap-3 ms-auto">
           <button id="themeToggle" class="btn btn-theme-toggle">Light</button>
         </div>
@@ -648,7 +733,7 @@
         <div class="d-flex align-items-center gap-3">
           <img id="tenantLogoMini" alt="logo do tenant" style="height:40px; width:auto; display:none" />
           <div>
-            <h1 class="fw-bold mb-0 fs-4">Painel de Getão do Chamador</h1>
+            <h1 class="fw-bold mb-0 fs-4">Painel de Gestão do Chamador</h1>
             <div class="text-body-secondary small">
               <span id="tenantName">-</span> • CNPJ: <span id="tenantCnpjFull">-</span> • <span id="tenantStatus" class="badge text-bg-light border">-</span>
             </div>
@@ -691,7 +776,8 @@
 
         <!-- Dashboard Tab -->
         <div class="tab-pane fade show active" id="pane-dashboard" role="tabpanel" aria-labelledby="tab-dashboard">
-          <div class="d-flex justify-content-end mb-2">
+          <div class="d-flex justify-content-end gap-2 mb-2">
+            <button type="button" id="btnOpenLiveMonitor" class="btn btn-sm btn-outline-success">Monitor ao Vivo</button>
             <button type="button" id="btnRefreshDashboard" class="btn btn-sm btn-outline-primary">Atualizar indicadores</button>
           </div>
           <div class="row g-3 mb-4">
@@ -730,6 +816,71 @@
               <div class="metric-card metric-accent-blue p-3 h-100">
                 <div class="small text-body-secondary">Última chamada</div>
                 <div id="dashLastCall" class="fw-semibold mt-2" style="font-size: 0.85rem;">-</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- KPIs estilo Power BI (preferenciais, tempos, operador destaque) -->
+          <div class="row g-3 mt-1 mb-2">
+            <div class="col-6 col-md-4 col-xl-2">
+              <div class="kpi-card kpi-card-pref h-100">
+                <div class="kpi-card-inner h-100">
+                  <div class="kpi-label">Preferenciais × Normais</div>
+                  <div class="kpi-value"><span id="dashKpiPref">0</span> × <span id="dashKpiNorm">0</span></div>
+                  <div class="kpi-pref-split">
+                    <div class="kpi-pref-bar pref" id="dashKpiPrefBar" style="flex: 0 0 0%; max-width: 100%;"></div>
+                    <div class="kpi-pref-bar norm" id="dashKpiNormBar" style="flex: 0 0 0%; max-width: 100%;"></div>
+                  </div>
+                  <div class="kpi-pref-legend">
+                    <span><span class="dot pref"></span> Preferencial</span>
+                    <span><span class="dot norm"></span> Normal</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+              <div class="kpi-card kpi-card-time-max h-100">
+                <div class="kpi-card-inner h-100">
+                  <div class="kpi-label">Maior tempo de atendimento</div>
+                  <div class="kpi-value" id="dashKpiMaxTime">—</div>
+                  <div class="kpi-sub">no período</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+              <div class="kpi-card kpi-card-time-min h-100">
+                <div class="kpi-card-inner h-100">
+                  <div class="kpi-label">Menor tempo de atendimento</div>
+                  <div class="kpi-value" id="dashKpiMinTime">—</div>
+                  <div class="kpi-sub">no período</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+              <div class="kpi-card kpi-card-destaque h-100">
+                <div class="kpi-card-inner h-100">
+                  <div class="kpi-label">Operador destaque</div>
+                  <div class="kpi-value text-truncate" id="dashKpiTopOpName" title="">—</div>
+                  <div class="kpi-sub"><span id="dashKpiTopOpCount">0</span> atendimentos</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+              <div class="kpi-card kpi-card-maior-qtd h-100">
+                <div class="kpi-card-inner h-100">
+                  <div class="kpi-label">Maior quantidade</div>
+                  <div class="kpi-value text-truncate" id="dashKpiMaiorQtdName" title="">—</div>
+                  <div class="kpi-sub"><span id="dashKpiMaiorQtdCount">0</span> concluídos</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-6 col-md-4 col-xl-2">
+              <div class="kpi-card kpi-card-menor-tempo h-100">
+                <div class="kpi-card-inner h-100">
+                  <div class="kpi-label">Menor tempo médio</div>
+                  <div class="kpi-value text-truncate" id="dashKpiFastOpName" title="">—</div>
+                  <div class="kpi-sub">média <span id="dashKpiFastOpAvg">—</span></div>
+                </div>
               </div>
             </div>
           </div>
@@ -1013,7 +1164,7 @@
                         min="0.5" max="2.0" step="0.1" value="1.0">
                     </div>
                     <div class="alert alert-soft small mb-0">
-                      Clique em Testar para ouvir: "Atenção! Senha A zero zero um. Dirija-se ao Guichê cinco."
+                      Clique em Testar para ouvir: "Senha A zero zero um, Caixas de Pagamento."
                     </div>
                   </div>
                 </div>
@@ -1328,6 +1479,80 @@
       </div>
     </div>
 
+    <!-- Modal: Monitor ao Vivo -->
+    <div class="modal fade" id="liveMonitorModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content modal-padrao-content">
+          <div class="modal-header modal-padrao-header">
+            <div>
+              <div class="fw-bold" style="font-size:1.15rem;">Monitor ao Vivo</div>
+              <div class="small opacity-75 mt-1">Atualização automática a cada 10 segundos. <span id="liveMonitorUpdatedAt"></span></div>
+            </div>
+            <div class="d-flex gap-2 align-items-center">
+              <button type="button" id="btnRefreshLiveMonitor" class="btn btn-sm btn-outline-light">Atualizar</button>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+          </div>
+          <div class="modal-body p-4">
+            <!-- Linha 1: Fila atual -->
+            <div class="small fw-semibold text-body-secondary mb-2 text-uppercase">Fila atual</div>
+            <div class="row g-3 mb-4">
+              <div class="col-6 col-md-4">
+                <div class="metric-card metric-accent-orange text-center">
+                  <div class="small opacity-75">Preferencial aguardando</div>
+                  <div id="lmQueuePref" class="fw-bold" style="font-size:2rem;">—</div>
+                </div>
+              </div>
+              <div class="col-6 col-md-4">
+                <div class="metric-card metric-accent-blue text-center">
+                  <div class="small opacity-75">Normal aguardando</div>
+                  <div id="lmQueueNorm" class="fw-bold" style="font-size:2rem;">—</div>
+                </div>
+              </div>
+              <div class="col-6 col-md-4">
+                <div class="metric-card metric-accent-green text-center">
+                  <div class="small opacity-75">Em atendimento</div>
+                  <div id="lmInService" class="fw-bold" style="font-size:2rem;">—</div>
+                </div>
+              </div>
+            </div>
+            <!-- Linha 2: Hoje -->
+            <div class="small fw-semibold text-body-secondary mb-2 text-uppercase">Hoje</div>
+            <div class="row g-3 mb-4">
+              <div class="col-6 col-md-3">
+                <div class="metric-card metric-accent-green text-center">
+                  <div class="small opacity-75">Atendidos</div>
+                  <div id="lmAttended" class="fw-bold" style="font-size:2rem;">—</div>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="metric-card metric-accent-red text-center">
+                  <div class="small opacity-75">Desistentes</div>
+                  <div id="lmDesistentes" class="fw-bold" style="font-size:2rem;">—</div>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="metric-card metric-accent-blue text-center">
+                  <div class="small opacity-75">Espera média</div>
+                  <div id="lmAvgWait" class="fw-bold" style="font-size:1.5rem;">—</div>
+                </div>
+              </div>
+              <div class="col-6 col-md-3">
+                <div class="metric-card metric-accent-blue text-center">
+                  <div class="small opacity-75">Atend. médio</div>
+                  <div id="lmAvgService" class="fw-bold" style="font-size:1.5rem;">—</div>
+                </div>
+              </div>
+            </div>
+            <!-- Linha 3: Gráfico por hora -->
+            <div class="small fw-semibold text-body-secondary mb-2 text-uppercase">Atendimentos por hora (hoje)</div>
+            <div id="lmHourlyChart" class="dash-chart-bars" style="min-height:80px;"></div>
+            <div id="lmHourlyEmpty" class="text-body-secondary small text-center py-3 d-none">Nenhum atendimento registrado hoje.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- User Modal (SCart-style) - Novo / Editar operador -->
     <div class="modal fade" id="userModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -1542,6 +1767,17 @@
           return String(s);
         }
       }
+      function fmtDuration(seconds) {
+        if (seconds == null || seconds <= 0) return "—";
+        const sec = Math.round(Number(seconds));
+        if (sec < 60) return sec + " s";
+        const min = Math.floor(sec / 60);
+        const rest = sec % 60;
+        if (min < 60) return rest > 0 ? min + " min " + rest + " s" : min + " min";
+        const h = Math.floor(min / 60);
+        const m = min % 60;
+        return m > 0 ? h + " h " + m + " min" : h + " h";
+      }
 
       let dashAnalyticsPeriod = "7d";
       async function refreshDashboard() {
@@ -1581,6 +1817,38 @@
           console.warn("Dashboard history:", e);
           renderDashboardRecent([]);
         }
+        try {
+          const kpis = await api(`/tenant/dashboard/kpis?period=${dashAnalyticsPeriod}`, { headers: authHeaders() }).catch(e => { console.warn("Dashboard KPIs:", e); return null; });
+          renderDashboardKpis(kpis);
+        } catch (e) {
+          console.warn("Dashboard KPIs:", e);
+          renderDashboardKpis(null);
+        }
+      }
+      function renderDashboardKpis(data) {
+        const pref = data ? (data.preferential_count ?? 0) : 0;
+        const norm = data ? (data.normal_count ?? 0) : 0;
+        const total = pref + norm || 1;
+        setText("dashKpiPref", String(pref));
+        setText("dashKpiNorm", String(norm));
+        const prefBar = document.getElementById("dashKpiPrefBar");
+        const normBar = document.getElementById("dashKpiNormBar");
+        if (prefBar) prefBar.style.flex = "0 0 " + (total ? (pref / total * 100) : 50) + "%";
+        if (normBar) normBar.style.flex = "0 0 " + (total ? (norm / total * 100) : 50) + "%";
+        setText("dashKpiMaxTime", data ? fmtDuration(data.max_duration_seconds) : "—");
+        setText("dashKpiMinTime", data ? fmtDuration(data.min_duration_seconds) : "—");
+        const topName = data ? (data.top_operator_name || "—") : "—";
+        setText("dashKpiTopOpName", topName);
+        const topEl = document.getElementById("dashKpiTopOpName");
+        if (topEl) topEl.title = topName;
+        setText("dashKpiTopOpCount", String(data ? (data.top_operator_count ?? 0) : 0));
+        setText("dashKpiMaiorQtdName", topName);
+        setText("dashKpiMaiorQtdCount", String(data ? (data.top_operator_count ?? 0) : 0));
+        const fastName = data ? (data.fastest_operator_name || "—") : "—";
+        setText("dashKpiFastOpName", fastName);
+        const fastEl = document.getElementById("dashKpiFastOpName");
+        if (fastEl) fastEl.title = fastName;
+        setText("dashKpiFastOpAvg", data ? fmtDuration(data.fastest_operator_avg_seconds) : "—");
       }
       function renderDashboardChart(data) {
         const container = document.getElementById("dashChartBars");
@@ -1880,8 +2148,8 @@
                 <td>${escapeHtml(u.role || "")}</td>
                 <td>${u.active ? '<span class="badge text-bg-success">ativo</span>' : '<span class="badge text-bg-secondary">inativo</span>'}</td>
                 <td class="text-nowrap">${escapeHtml(fmtDt(u.created_at))}</td>
-                <td class="text-end d-flex gap-1 justify-content-end flex-wrap">
-                  <button class="btn-action btn-refresh btn-sm" data-edit-user="${escapeHtml(u.id || "")}" title="Editar">Editar</button>
+                <td class="text-end d-flex gap-1 justify-content-end flex-nowrap" style="white-space:nowrap;">
+                  <button class="btn-action btn-refresh" data-edit-user="${escapeHtml(u.id || "")}" title="Editar">Editar</button>
                   <button class="btn-action ${u.active ? 'btn-toggle-off' : 'btn-toggle-on'}" data-toggle-user="${escapeHtml(u.id || "")}" data-active="${u.active ? '1' : '0'}">${u.active ? 'Desativar' : 'Ativar'}</button>
                   <button class="btn-action btn-delete" data-del-user="${escapeHtml(u.id || "")}">Excluir</button>
                 </td>
@@ -2120,15 +2388,27 @@
         dashAnalyticsPeriod = "7d";
         document.querySelectorAll(".dash-period-btn").forEach(b => { b.classList.remove("active"); });
         document.getElementById("dashPeriod7d")?.classList.add("active");
-        const data = await api(`/tenant/dashboard/analytics?period=7d`, { headers: authHeaders() });
-        renderDashboardChart(data);
+        try {
+          const [chartData, kpis] = await Promise.all([
+            api(`/tenant/dashboard/analytics?period=7d`, { headers: authHeaders() }),
+            api(`/tenant/dashboard/kpis?period=7d`, { headers: authHeaders() }).catch(() => null),
+          ]);
+          renderDashboardChart(chartData);
+          renderDashboardKpis(kpis);
+        } catch (e) { console.warn(e); }
       });
       document.getElementById("dashPeriod30d")?.addEventListener("click", async () => {
         dashAnalyticsPeriod = "30d";
         document.querySelectorAll(".dash-period-btn").forEach(b => { b.classList.remove("active"); });
         document.getElementById("dashPeriod30d")?.classList.add("active");
-        const data = await api(`/tenant/dashboard/analytics?period=30d`, { headers: authHeaders() });
-        renderDashboardChart(data);
+        try {
+          const [chartData, kpis] = await Promise.all([
+            api(`/tenant/dashboard/analytics?period=30d`, { headers: authHeaders() }),
+            api(`/tenant/dashboard/kpis?period=30d`, { headers: authHeaders() }).catch(() => null),
+          ]);
+          renderDashboardChart(chartData);
+          renderDashboardKpis(kpis);
+        } catch (e) { console.warn(e); }
       });
 
       const rankingModal = new bootstrap.Modal(document.getElementById("rankingModal"));
@@ -2673,7 +2953,7 @@
           const voice = selectTtsVoice?.value || "pf_dora";
           const speed = sliderTtsSpeed?.value || 0.85;
           const volume = sliderTtsVolume?.value || 1.0;
-          const url = `${EDGE_BASE}/api/tts/call?ticket_code=A001&counter_name=Guich%C3%AA+cinco` +
+          const url = `${EDGE_BASE}/api/tts/call?ticket_code=A001&service_name=Caixas+de+Pagamento` +
             `&voice=${encodeURIComponent(voice)}&speed=${speed}&volume=${volume}`;
           const audio = new Audio(url);
           btnTestTtsVoice.disabled = true;
@@ -2760,9 +3040,15 @@
           const id = s.getAttribute("data-del-service");
           const ok = await swalConfirm("Excluir serviço?", "Essa ação remove o serviço do tenant.");
           if (!ok.isConfirmed) return;
-          await api("/tenant/services/delete", { method: "POST", headers: authHeaders(), body: JSON.stringify({ id }) });
-          await refreshServices();
-          swalOk("Excluído", "Serviço removido.");
+          try {
+            await api("/tenant/services/delete", { method: "POST", headers: authHeaders(), body: JSON.stringify({ id }) });
+            await refreshServices();
+            swalOk("Excluído", "Serviço removido.");
+          } catch (e) {
+            const msg = e?.message || String(e);
+            const detail = msg.includes("detail") ? JSON.parse(msg.slice(msg.indexOf("{"))).detail : msg;
+            Swal.fire({ icon: "warning", title: "Não foi possível excluir", text: detail });
+          }
         }
       });
 
@@ -2830,6 +3116,69 @@
           loginModal.show();
         }
       })();
+
+      // ── Monitor ao Vivo ────────────────────────────────────────────────────
+      let _liveMonitorInterval = null;
+
+      function fmtSeconds(sec) {
+        if (!sec || sec <= 0) return "—";
+        const m = Math.floor(sec / 60);
+        const s = Math.round(sec % 60);
+        return m > 0 ? `${m}m ${s}s` : `${s}s`;
+      }
+
+      async function loadLiveMonitor() {
+        try {
+          const d = await api("/tenant/dashboard/live", { headers: authHeaders() });
+
+          document.getElementById("lmQueuePref").textContent = d.queue?.preferential ?? "—";
+          document.getElementById("lmQueueNorm").textContent = d.queue?.normal ?? "—";
+          document.getElementById("lmInService").textContent = d.today?.in_service ?? "—";
+          document.getElementById("lmAttended").textContent = d.today?.attended ?? "—";
+          document.getElementById("lmDesistentes").textContent = d.today?.desistentes ?? "—";
+          document.getElementById("lmAvgWait").textContent = fmtSeconds(d.avg_wait_seconds);
+          document.getElementById("lmAvgService").textContent = fmtSeconds(d.avg_service_seconds);
+
+          const now = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+          document.getElementById("liveMonitorUpdatedAt").textContent = `Última atualização: ${now}`;
+
+          // Gráfico horário
+          const hourly = d.hourly || [];
+          const chart = document.getElementById("lmHourlyChart");
+          const empty = document.getElementById("lmHourlyEmpty");
+          if (!hourly.length) {
+            chart.innerHTML = "";
+            empty.classList.remove("d-none");
+          } else {
+            empty.classList.add("d-none");
+            const maxVal = Math.max(1, ...hourly.map(h => h.attended + h.desistentes));
+            chart.innerHTML = hourly.map(h => {
+              const total = h.attended + h.desistentes;
+              const pct = Math.round((total / maxVal) * 100);
+              const pctAtt = total ? Math.round((h.attended / total) * 100) : 0;
+              return `<div class="dash-chart-bar-wrap" title="${h.hour}: ${h.attended} atend., ${h.desistentes} desist.">
+                <div class="dash-chart-bar" style="height:${pct}%; background: linear-gradient(to top, #e53e3e ${100 - pctAtt}%, #1f9d55 ${100 - pctAtt}%)"></div>
+                <span class="small" style="font-size:0.65rem;">${h.hour}</span>
+              </div>`;
+            }).join("");
+          }
+        } catch (e) {
+          document.getElementById("liveMonitorUpdatedAt").textContent = "Erro ao carregar dados.";
+        }
+      }
+
+      const liveMonitorModal = new bootstrap.Modal(document.getElementById("liveMonitorModal"));
+      document.getElementById("liveMonitorModal").addEventListener("shown.bs.modal", () => {
+        loadLiveMonitor();
+        _liveMonitorInterval = setInterval(loadLiveMonitor, 10_000);
+      });
+      document.getElementById("liveMonitorModal").addEventListener("hidden.bs.modal", () => {
+        clearInterval(_liveMonitorInterval);
+        _liveMonitorInterval = null;
+      });
+      document.getElementById("btnOpenLiveMonitor")?.addEventListener("click", () => liveMonitorModal.show());
+      document.getElementById("btnRefreshLiveMonitor")?.addEventListener("click", () => loadLiveMonitor());
+      // ── fim Monitor ao Vivo ────────────────────────────────────────────────
 
       // Periodic dashboard refresh (while authenticated)
       setInterval(() => {

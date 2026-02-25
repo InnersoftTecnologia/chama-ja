@@ -1,0 +1,7 @@
+# Regra udev: permissão permanente para impressora USB (POS80/80-IX e outras)
+# Dispositivo: /dev/usb/lp*
+# Instale com: sudo ./scripts/instalar-permissao-impressora.sh
+# Depois reconecte o cabo USB da impressora ou reinicie.
+
+# Qualquer impressora USB: todos podem ler/escrever (evita problema de grupo lp)
+KERNEL=="lp[0-9]*", SUBSYSTEM=="usbmisc", MODE="0666"

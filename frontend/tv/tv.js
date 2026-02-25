@@ -201,8 +201,8 @@ function renderCurrentCalls(calls) {
         <div class="px-6 py-3 bg-primary text-background-dark rounded-xl font-black text-xl uppercase tracking-tighter shadow-lg shadow-primary/20 mt-3">
           ${escapeHtml((call.counter_name || "GUICHÊ --").toUpperCase())}
         </div>
-        <span class="text-xs font-medium text-white/50 mt-2">${escapeHtml(call.service_name || "")}</span>
-        ${op || startedTxt ? `<span class="text-[10px] font-bold text-white/40 mt-2 uppercase tracking-widest">${escapeHtml(op)}${op && startedTxt ? " • " : ""}${escapeHtml(startedTxt ? `Início ${startedTxt}` : "")}</span>` : ""}
+        <span class="text-sm font-black uppercase tracking-widest mt-2 ${isPrefer ? "text-accent" : "text-white/60"}">${isPrefer ? "PREFERENCIAL" : "NORMAL"}</span>
+        ${op || startedTxt ? `<span class="text-xs font-bold text-white/50 mt-1 uppercase tracking-widest">${escapeHtml(op)}${op && startedTxt ? " · " : ""}${escapeHtml(startedTxt ? `Início ${startedTxt}` : "")}</span>` : ""}
       </div>
     `;
     container.insertAdjacentHTML("beforeend", html);
@@ -242,18 +242,17 @@ function renderPanelHeader(mode) {
 function renderQueueItem(item, pos) {
   const isPrefer = item.priority === "preferential";
   const ticketColor = isPrefer ? "text-accent" : "text-white";
+  const priorityLabel = isPrefer ? "PREFERENCIAL" : "NORMAL";
+  const priorityColor = isPrefer ? "text-accent" : "text-white/60";
   const issuedAt = item.issued_at ? new Date(item.issued_at) : null;
   const timeTxt = issuedAt ? issuedAt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }) : "";
   return `
-    <div class="flex items-center justify-between px-3 py-2 bg-white/5 rounded-xl border border-white/5">
-      <div class="flex items-center gap-2">
-        <span style="color:rgba(255,255,255,0.18);font-size:10px;font-weight:900;width:14px;text-align:center">${pos}</span>
-        <div class="flex flex-col">
-          <span class="text-xl font-black ${ticketColor} tracking-tighter">${escapeHtml(item.ticket_code || "")}</span>
-          <span class="text-[9px] font-bold uppercase" style="color:rgba(255,255,255,0.35)">${escapeHtml(item.service_name || "")}</span>
-        </div>
-      </div>
-      <span class="text-[9px] font-bold" style="color:rgba(255,255,255,0.22)">${escapeHtml(timeTxt)}</span>
+    <div class="flex flex-col items-center justify-center py-4 px-3 bg-white/5 rounded-2xl border border-white/10 text-center">
+      <span style="color:rgba(255,255,255,0.2);font-size:11px;font-weight:900;letter-spacing:0.1em">Nº ${pos}</span>
+      <span class="text-4xl font-black ${ticketColor} tracking-tighter leading-none mt-1">${escapeHtml(item.ticket_code || "")}</span>
+      <span class="text-sm font-black uppercase tracking-widest mt-2 ${priorityColor}">${priorityLabel}</span>
+      <span class="text-xs font-bold uppercase mt-1" style="color:rgba(255,255,255,0.4)">${escapeHtml(item.service_name || "")}</span>
+      <span class="text-xs font-bold mt-1" style="color:rgba(255,255,255,0.25)">${escapeHtml(timeTxt)}</span>
     </div>`;
 }
 
@@ -272,13 +271,11 @@ function renderHistoryItem(item) {
     durTxt = `${mins}m${rem.toString().padStart(2, "0")}s`;
   }
   return `
-    <div class="flex items-center justify-between px-3 py-2 bg-white/5 rounded-xl border border-white/5" style="${opacity}">
-      <div class="flex flex-col">
-        <span class="text-xl font-black ${ticketColor} tracking-tighter">${escapeHtml(item.ticket_code || "")}</span>
-        <span class="text-[9px] font-bold uppercase" style="color:rgba(255,255,255,0.4)">${escapeHtml((item.counter_name || "").toUpperCase())}</span>
-        ${(endedTxt || durTxt) ? `<span class="text-[9px] font-bold uppercase" style="color:rgba(255,255,255,0.25)">${escapeHtml(endedTxt ? `Fim ${endedTxt}` : "")}${endedTxt && durTxt ? " • " : ""}${escapeHtml(durTxt ? `Dur. ${durTxt}` : "")}</span>` : ""}
-      </div>
-      <span class="text-[9px] font-bold text-right" style="color:rgba(255,255,255,0.2);max-width:60px;word-break:break-word">${escapeHtml(item.service_name || "")}</span>
+    <div class="flex flex-col items-center justify-center py-4 px-3 bg-white/5 rounded-2xl border border-white/10 text-center" style="${opacity}">
+      <span class="text-4xl font-black ${ticketColor} tracking-tighter leading-none">${escapeHtml(item.ticket_code || "")}</span>
+      <span class="text-sm font-bold uppercase mt-2" style="color:rgba(255,255,255,0.5)">${escapeHtml((item.counter_name || "").toUpperCase())}</span>
+      <span class="text-xs font-bold uppercase mt-1" style="color:rgba(255,255,255,0.35)">${escapeHtml(item.service_name || "")}</span>
+      ${(endedTxt || durTxt) ? `<span class="text-xs font-bold mt-1" style="color:rgba(255,255,255,0.25)">${escapeHtml(endedTxt ? `Fim ${endedTxt}` : "")}${endedTxt && durTxt ? " · " : ""}${escapeHtml(durTxt ? `Dur. ${durTxt}` : "")}</span>` : ""}
     </div>`;
 }
 
@@ -301,18 +298,19 @@ function renderPanel() {
   normalEl.innerHTML = normal.length ? normal.map((item, i) => renderFn(item, i + 1)).join("") : emptyNormal;
   preferEl.innerHTML = prefer.length ? prefer.map((item, i) => renderFn(item, i + 1)).join("") : emptyPrefer;
 
-  // Animação de fade ao trocar conteúdo
+  // Animação de fade ao trocar conteúdo + inicia carrossel vertical em cada seção
   [normalEl, preferEl].forEach((el) => {
     el.classList.remove("panel-fade-in");
     void el.offsetWidth; // força reflow
     el.classList.add("panel-fade-in");
+    startCarouselScroll(el);
   });
 }
 
 function renderHistory(history) {
-  lastHistory = (history || []).filter(
-    (item) => !item.status || ["completed", "no_show", "cancelled"].includes(item.status)
-  );
+  lastHistory = (history || [])
+    .filter((item) => !item.status || ["completed", "no_show", "cancelled"].includes(item.status))
+    .slice(0, 5);
   renderPanel();
 }
 
@@ -327,6 +325,29 @@ function startPanelToggle() {
     panelMode = panelMode === "queue" ? "history" : "queue";
     renderPanel();
   }, 9000); // alterna a cada 9 segundos
+}
+
+// Carrossel vertical: rola lentamente o container para que todos leiam as senhas
+function startCarouselScroll(el) {
+  if (!el) return;
+  if (el._carouselTimer) {
+    clearInterval(el._carouselTimer);
+    el._carouselTimer = null;
+  }
+  el.scrollTop = 0;
+  let pauseMs = 2500; // pausa inicial no topo antes de começar a rolar
+  const TICK_MS = 80; // intervalo entre ticks (ms)
+  const PX_PER_TICK = 1; // pixels por tick (≈12px/s — confortável para idosos)
+  el._carouselTimer = setInterval(() => {
+    if (pauseMs > 0) { pauseMs -= TICK_MS; return; }
+    const maxScroll = el.scrollHeight - el.clientHeight;
+    if (maxScroll <= 10) return; // conteúdo cabe na tela, não precisa rolar
+    el.scrollTop += PX_PER_TICK;
+    if (el.scrollTop >= maxScroll) {
+      el.scrollTop = 0;
+      pauseMs = 3000; // pausa de 3s no topo após cada ciclo completo
+    }
+  }, TICK_MS);
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -499,6 +520,29 @@ async function playCallAudio(call) {
   state.isPlayingCallAudio = true;
   try {
     pauseYouTubeForCall();
+
+    // Pré-carregar TTS em paralelo com a campainha (se habilitado)
+    let ttsAudio = null;
+    let ttsReadyPromise = Promise.resolve();
+    if (state.ttsEnabled && call?.ticket_code) {
+      const ttsUrl = `${EDGE_BASE}/api/tts/call?` +
+        `ticket_code=${encodeURIComponent(call.ticket_code)}` +
+        `&service_name=${encodeURIComponent(call.service_name || "")}` +
+        `&counter_name=${encodeURIComponent(call.counter_name || "")}` +
+        `&voice=${encodeURIComponent(state.ttsVoice || "pf_dora")}` +
+        `&speed=${state.ttsSpeed || 0.85}` +
+        `&volume=${state.ttsVolume || 1.0}`;
+      ttsAudio = new Audio(ttsUrl);
+      ttsAudio.volume = 1.0;
+      ttsAudio.preload = "auto";
+      // Aguarda canplay ou erro (download em background enquanto campainha toca)
+      ttsReadyPromise = new Promise((resolve) => {
+        ttsAudio.oncanplaythrough = resolve;
+        ttsAudio.onerror = resolve; // falha silenciosa
+        ttsAudio.load();
+      });
+    }
+
     const soundFile = state.callSoundFile || "notification-1.mp3";
     const soundUrl = `${EDGE_BASE}/api/sounds/${encodeURIComponent(soundFile)}`;
     try {
@@ -525,19 +569,14 @@ async function playCallAudio(call) {
       o.stop();
       await ctx.close();
     }
-    // Após a campainha, anunciar em voz TTS (se habilitado)
-    if (state.ttsEnabled && call?.ticket_code && call?.counter_name) {
+
+    // Após a campainha: aguardar TTS pronto (já deve estar, foi carregado em paralelo) e reproduzir
+    if (ttsAudio) {
       try {
-        const ttsUrl = `${EDGE_BASE}/api/tts/call?` +
-          `ticket_code=${encodeURIComponent(call.ticket_code)}` +
-          `&counter_name=${encodeURIComponent(call.counter_name)}` +
-          `&voice=${encodeURIComponent(state.ttsVoice || "pf_dora")}` +
-          `&speed=${state.ttsSpeed || 0.85}` +
-          `&volume=${state.ttsVolume || 1.0}`;
-        const ttsAudio = new Audio(ttsUrl);
+        await ttsReadyPromise;
         await new Promise((resolve) => {
           ttsAudio.onended = resolve;
-          ttsAudio.onerror = resolve; // falha silenciosa — não quebra o fluxo
+          ttsAudio.onerror = resolve;
           ttsAudio.play().catch(resolve);
         });
       } catch (_) {
@@ -665,6 +704,19 @@ function connectSSEWithToken() {
           onCallCreated(call);
           state.seenCallIds.add(call.id);
         }
+      }
+    } catch {}
+  });
+
+  // Rechamada explícita — sempre toca campainha + TTS + modal, sem deduplicação
+  es.addEventListener("ticket.recalled", (ev) => {
+    try {
+      const payload = JSON.parse(ev.data);
+      const call = normalizeCallFromTicket(payload?.call);
+      if (call) {
+        state.seenCallIds.delete(call.id); // permite re-anúncio na próxima reconexão SSE
+        onCallCreated(call);
+        state.seenCallIds.add(call.id);
       }
     } catch {}
   });

@@ -1,0 +1,35 @@
+# Apenas Kokoro TTS (para servidor/deploy). Uso: docker compose -f docker-compose.standalone.yml up -d
+version: '3.8'
+name: kokoro-standalone
+
+services:
+  kokoro-api:
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:latest
+    container_name: kokoro-tts
+    ports:
+      - "8880:8880"
+    environment:
+      - TARGET_MIN_TOKENS=175
+      - TARGET_MAX_TOKENS=250
+      - ABSOLUTE_MAX_TOKENS=450
+      - LOG_LEVEL=info
+    volumes:
+      - kokoro-models:/app/models
+      - ./audio_output:/app/outputs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8880/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - kokoro-network
+
+volumes:
+  kokoro-models:
+    driver: local
+
+networks:
+  kokoro-network:
+    driver: bridge

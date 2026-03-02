@@ -172,7 +172,8 @@
   function buildUrl(app, useHost) {
     // Em produção (via Nginx) usa navPath; em dev local usa porta
     if (app.navPath && window.EDGE_BASE) {
-      return `${protocol}//${host}${app.navPath}`;
+      const navBase = (window.NAV_BASE || "").replace(/\/$/, "");
+      return `${protocol}//${host}${navBase}${app.navPath}`;
     }
     const h = useHost != null ? useHost : host;
     const path = app.navPath || app.path || "/";
@@ -197,7 +198,7 @@
         <div class="card-icon">${app.icon}</div>
         <h2 class="card-title">${escapeHtml(app.title)}</h2>
         <p class="card-desc">${escapeHtml(app.desc)}</p>
-        <span class="card-badge">${window.EDGE_BASE ? (app.navPath || "/") : ":" + app.port}</span>
+        <span class="card-badge">${window.EDGE_BASE ? ((window.NAV_BASE || "") + (app.navPath || "/")) : ":" + app.port}</span>
         ${isTotem ? `
         <div class="card-qr">
           <p class="card-qr-label">Acesse pelo celular ou tablet</p>

@@ -2326,7 +2326,7 @@
               <tr>
                 <td class="text-nowrap">${escapeHtml(String(v.position ?? ""))}</td>
                 <td>
-                  ${thumbUrl ? `<img src="${escapeHtml(thumbUrl.startsWith('/') ? `${window.location.protocol}//${window.location.hostname}:7071${thumbUrl}` : thumbUrl)}" alt="thumb" style="width:64px;height:36px;object-fit:cover;border-radius:8px;border:1px solid rgba(0,0,0,.08)" />` : `<span class="text-body-secondary small">—</span>`}
+                  ${thumbUrl ? `<img src="${escapeHtml(thumbUrl.startsWith('/') ? `${EDGE_BASE}${thumbUrl}` : thumbUrl)}" alt="thumb" style="width:64px;height:36px;object-fit:cover;border-radius:8px;border:1px solid rgba(0,0,0,.08)" />` : `<span class="text-body-secondary small">—</span>`}
                 </td>
                 <td>
                   ${isSlide ? '<span class="badge text-bg-info">Slide</span>' : '<span class="badge text-bg-danger">YouTube</span>'}
@@ -2656,7 +2656,7 @@
           document.getElementById("ytSlideFile").value = ""; // File input cannot be pre-filled
           document.getElementById("ytSlideDuration").value = String(v.slide_duration_seconds || 10);
           if (v.image_url) {
-            const imgUrl = v.image_url.startsWith("/") ? `${window.location.protocol}//${window.location.hostname}:7071${v.image_url}` : v.image_url;
+            const imgUrl = v.image_url.startsWith("/") ? `${EDGE_BASE}${v.image_url}` : v.image_url;
             document.getElementById("ytSlidePreviewImg").src = imgUrl;
             document.getElementById("ytSlidePreview").style.display = "block";
           }

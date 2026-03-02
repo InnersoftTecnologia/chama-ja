@@ -173,7 +173,7 @@
             <img src="images/logo_chama_ja.svg" alt="Chama Já" class="op-topbar-logo-chamaja" />
             <img id="tenantLogoMini" alt="Logo do tenant" style="height:40px; width:auto; display:none" />
             <div class="fw-bold text-white" style="font-size:1.1rem;">Operador</div>
-            <div id="pillUser" class="op-pill d-none"></div>
+            <div id="pillUser" class="op-pill d-none" style="font-size:1rem; font-weight:600; color:#fff; background:rgba(255,255,255,0.12); border-color:rgba(255,255,255,0.28);"></div>
             <div id="pillCounter" class="op-pill d-none"></div>
           </div>
           <div class="d-flex align-items-center gap-2">
@@ -189,45 +189,46 @@
     </div>
 
     <main class="container py-4">
+      <!-- Atendimento atual — largura total -->
       <div class="row g-4">
-        <!-- Em atendimento -->
-        <div class="col-12 col-lg-5">
+        <div class="col-12">
           <div class="card card-glass">
             <div class="card-body p-4">
-              <div class="d-flex align-items-center justify-content-between">
+              <div class="d-flex align-items-center justify-content-between mb-1">
                 <div>
                   <div class="text-white-50 small">Em atendimento</div>
                   <div class="fw-bold text-white" style="font-size: 1.25rem;">Atendimento atual</div>
                 </div>
-                <div class="d-flex gap-2">
-                  <button id="btnRefreshNow" class="btn btn-soft btn-sm">Atualizar</button>
-                </div>
+                <button id="btnRefreshNow" class="btn btn-soft btn-sm">Atualizar</button>
               </div>
 
-              <div id="currentEmpty" class="mt-4 text-white-50">
+              <div id="currentEmpty" class="mt-3 text-white-50">
                 Nenhuma senha em atendimento agora.
               </div>
 
-              <div id="currentCard" class="mt-4 d-none">
+              <div id="currentCard" class="mt-3 d-none">
                 <div class="ticket-card">
-                  <div>
-                    <div id="curCode" class="ticket-code text-white">A-000</div>
-                    <div id="curService" class="ticket-meta">Serviço</div>
-                    <div class="ticket-meta mt-1">
-                      <span class="text-white-50">Status:</span> <span id="curStatus" class="text-white-75">called</span>
-                      <span class="text-white-50 ms-2">Guichê:</span> <span id="curCounter" class="text-white-75">—</span>
-                    </div>
-                    <div class="ticket-meta mt-1">
-                      <span class="text-white-50">Chamado:</span> <span id="curCalledAt" class="text-white-75">—</span>
-                      <span class="text-white-50 ms-2">Início:</span> <span id="curStartedAt" class="text-white-75">—</span>
+                  <!-- Código em destaque -->
+                  <div class="d-flex align-items-center gap-4 flex-wrap flex-grow-1">
+                    <div id="curCode" class="text-white" style="font-size:2.4rem; font-weight:800; letter-spacing:2px; line-height:1;">A-000</div>
+                    <div class="flex-grow-1">
+                      <div id="curService" class="ticket-meta fw-semibold" style="font-size:1rem;"></div>
+                      <div class="ticket-meta mt-1">
+                        <span class="text-white-50">Status:</span> <span id="curStatus" class="text-white-75">—</span>
+                        <span class="text-white-50 ms-3">Guichê:</span> <span id="curCounter" class="text-white-75">—</span>
+                      </div>
+                      <div class="ticket-meta mt-1">
+                        <span class="text-white-50">Chamado:</span> <span id="curCalledAt" class="text-white-75">—</span>
+                        <span class="text-white-50 ms-3">Início:</span> <span id="curStartedAt" class="text-white-75">—</span>
+                      </div>
                     </div>
                   </div>
-                  <div class="text-end">
+                  <div class="text-end ms-2">
                     <div id="curPriorityBadge" class="op-pill">Normal</div>
                   </div>
                 </div>
 
-                <div class="d-grid gap-2 d-md-flex mt-3">
+                <div class="d-flex flex-wrap gap-2 mt-3">
                   <button id="btnStart" class="btn btn-scart-primary">Iniciar</button>
                   <button id="btnRecall" class="btn btn-soft" disabled>Rechamar</button>
                   <button id="btnComplete" class="btn btn-soft">Finalizar</button>
@@ -239,42 +240,40 @@
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Filas -->
-        <div class="col-12 col-lg-7">
-          <div class="row g-4">
-            <!-- Preferencial -->
-            <div class="col-12 col-md-6 queue-col">
-              <div class="card card-glass h-100">
-                <div class="card-body p-4">
-                  <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                      <div class="text-white-50 small">Fila</div>
-                      <div class="fw-bold text-white">Preferencial</div>
-                      <div class="small text-white-50"><span id="countPref">0</span> aguardando</div>
-                    </div>
-                    <button id="btnCallNextPref" class="btn btn-scart-primary btn-sm">Chamar próxima</button>
-                  </div>
-                  <div class="queue-scroll mt-3 d-grid gap-2" id="listPref"></div>
+      <!-- Filas — lado a lado -->
+      <div class="row g-4 mt-0">
+        <!-- Preferencial -->
+        <div class="col-12 col-md-6 queue-col">
+          <div class="card card-glass h-100">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-white-50 small">Fila</div>
+                  <div class="fw-bold text-white">Preferencial</div>
+                  <div class="small text-white-50"><span id="countPref">0</span> aguardando</div>
                 </div>
+                <button id="btnCallNextPref" class="btn btn-scart-primary btn-sm">Chamar próxima</button>
               </div>
+              <div class="queue-scroll mt-3 d-grid gap-2" id="listPref"></div>
             </div>
+          </div>
+        </div>
 
-            <!-- Normal -->
-            <div class="col-12 col-md-6 queue-col">
-              <div class="card card-glass h-100">
-                <div class="card-body p-4">
-                  <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                      <div class="text-white-50 small">Fila</div>
-                      <div class="fw-bold text-white">Normal</div>
-                      <div class="small text-white-50"><span id="countNorm">0</span> aguardando</div>
-                    </div>
-                    <button id="btnCallNextNorm" class="btn btn-scart-primary btn-sm">Chamar próxima</button>
-                  </div>
-                  <div class="queue-scroll mt-3 d-grid gap-2" id="listNorm"></div>
+        <!-- Normal -->
+        <div class="col-12 col-md-6 queue-col">
+          <div class="card card-glass h-100">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div class="text-white-50 small">Fila</div>
+                  <div class="fw-bold text-white">Normal</div>
+                  <div class="small text-white-50"><span id="countNorm">0</span> aguardando</div>
                 </div>
+                <button id="btnCallNextNorm" class="btn btn-scart-primary btn-sm">Chamar próxima</button>
               </div>
+              <div class="queue-scroll mt-3 d-grid gap-2" id="listNorm"></div>
             </div>
           </div>
         </div>
@@ -406,7 +405,7 @@
       function showIdentity(me, counterName) {
         const pillUser = document.getElementById("pillUser");
         const pillCounter = document.getElementById("pillCounter");
-        pillUser.textContent = `${me.email || "operador"} (${me.role || "operator"})`;
+        pillUser.textContent = me.full_name || me.email || "Operador";
         pillCounter.textContent = counterName ? `Guichê: ${counterName}` : "Guichê: —";
         pillUser.classList.remove("d-none");
         pillCounter.classList.remove("d-none");
@@ -443,11 +442,9 @@
         }
 
         tickets.forEach((t) => {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className = "ticket-card text-start";
-          btn.style.cursor = "pointer";
-          btn.innerHTML = `
+          const div = document.createElement("div");
+          div.className = "ticket-card text-start";
+          div.innerHTML = `
             <div>
               <div class="ticket-code text-white">${t.ticket_code}</div>
               <div class="ticket-meta">${t.service_name}</div>
@@ -455,8 +452,7 @@
             </div>
             <div class="op-pill">${priorityLabel(t.priority)}</div>
           `;
-          btn.addEventListener("click", () => callSpecificTicket(t.id));
-          root.appendChild(btn);
+          root.appendChild(div);
         });
       }
 
@@ -531,7 +527,7 @@
 
         // Actions availability
         document.getElementById("btnStart").disabled = cur.status !== "called";
-        document.getElementById("btnRecall").disabled = !(cur.status === "called" || cur.status === "in_service");
+        document.getElementById("btnRecall").disabled = cur.status !== "called";
         document.getElementById("btnComplete").disabled = !(cur.status === "called" || cur.status === "in_service");
         document.getElementById("btnNoShow").disabled = !(cur.status === "called" || cur.status === "in_service");
         document.getElementById("btnCancel").disabled = (cur.status === "completed" || cur.status === "cancelled" || cur.status === "no_show");
@@ -721,13 +717,22 @@
         location.reload();
       });
       document.getElementById("btnRefreshNow").addEventListener("click", () => refreshAll());
+      function isFilaVazia(e) {
+        const s = String(e);
+        return s.includes("404") && (s.includes("No tickets") || s.includes("waiting in queue"));
+      }
+
       document.getElementById("btnCallNextPref").addEventListener("click", async () => {
         try {
           const r = await callNext("preferential");
           Toast.fire({ icon: "success", title: `Chamando ${r.ticket_code || "senha"}` });
           await refreshAll();
         } catch (e) {
-          Swal.fire({ icon: "error", title: "Erro", text: String(e), confirmButtonColor: "#0b6ef3" });
+          if (isFilaVazia(e)) {
+            Toast.fire({ icon: "info", title: "Fila preferencial vazia" });
+          } else {
+            Swal.fire({ icon: "error", title: "Erro", text: String(e), confirmButtonColor: "#0b6ef3" });
+          }
         }
       });
       document.getElementById("btnCallNextNorm").addEventListener("click", async () => {
@@ -736,7 +741,11 @@
           Toast.fire({ icon: "success", title: `Chamando ${r.ticket_code || "senha"}` });
           await refreshAll();
         } catch (e) {
-          Swal.fire({ icon: "error", title: "Erro", text: String(e), confirmButtonColor: "#0b6ef3" });
+          if (isFilaVazia(e)) {
+            Toast.fire({ icon: "info", title: "Fila normal vazia" });
+          } else {
+            Swal.fire({ icon: "error", title: "Erro", text: String(e), confirmButtonColor: "#0b6ef3" });
+          }
         }
       });
 
@@ -759,7 +768,12 @@
           Toast.fire({ icon: "success", title: `Rechamando ${cur.ticket_code}` });
           await refreshAll();
         } catch (e) {
-          Swal.fire({ icon: "error", title: "Erro", text: String(e), confirmButtonColor: "#0b6ef3" });
+          const s = String(e);
+          if (s.includes("cannot be called")) {
+            Toast.fire({ icon: "warning", title: "Não é possível rechamar neste momento" });
+          } else {
+            Swal.fire({ icon: "error", title: "Erro", text: s, confirmButtonColor: "#0b6ef3" });
+          }
         }
       });
 

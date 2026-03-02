@@ -1594,6 +1594,13 @@
                   <label class="form-check-label" for="uActive">Ativo</label>
                 </div>
               </div>
+              <div class="col-12">
+                <label class="form-label fw-semibold">Serviços que atende</label>
+                <div id="uServicesCheckboxes" class="d-flex flex-wrap gap-2 pt-1">
+                  <span class="text-body-secondary small">Carregando serviços...</span>
+                </div>
+                <div class="form-text text-body-secondary">Sem seleção: atende todos os serviços.</div>
+              </div>
             </div>
           </div>
           <div class="modal-footer p-4 pt-0 border-0 d-flex justify-content-between">
@@ -1926,6 +1933,7 @@
       }
 
       let lastUsers = [];
+      let lastServices = [];
       let editingUserId = null;
       async function refreshUsers() {
         const data = await api("/tenant/users", { headers: authHeaders() });
@@ -1938,7 +1946,41 @@
       }
       async function refreshServices() {
         const data = await api("/tenant/services", { headers: authHeaders() });
+        lastServices = Array.isArray(data) ? data : [];
         renderServicesTable(data);
+      }
+
+      function renderServiceCheckboxes(services, selectedIds) {
+        const container = document.getElementById("uServicesCheckboxes");
+        if (!container) return;
+        const active = (services || []).filter(s => s.active);
+        if (!active.length) {
+          container.innerHTML = '<span class="text-body-secondary small">Nenhum serviço cadastrado.</span>';
+          return;
+        }
+        // Agrupar service_ids por nome único
+        const groups = {};
+        for (const s of active) {
+          if (!groups[s.name]) groups[s.name] = [];
+          groups[s.name].push(s.id);
+        }
+        const sel = new Set(selectedIds || []);
+        container.innerHTML = Object.entries(groups).map(([name, ids]) => {
+          const checked = ids.some(id => sel.has(id)) ? "checked" : "";
+          const idsJson = escapeHtml(JSON.stringify(ids));
+          return `<div class="form-check">
+            <input class="form-check-input" type="checkbox" id="usvc_${escapeHtml(ids[0])}" data-svc-ids='${idsJson}' ${checked}>
+            <label class="form-check-label" for="usvc_${escapeHtml(ids[0])}">${escapeHtml(name)}</label>
+          </div>`;
+        }).join("");
+      }
+
+      function collectCheckedServiceIds() {
+        const ids = [];
+        document.querySelectorAll("#uServicesCheckboxes input[type=checkbox]:checked").forEach(cb => {
+          try { ids.push(...JSON.parse(cb.getAttribute("data-svc-ids") || "[]")); } catch {}
+        });
+        return ids;
       }
 
       async function refreshAnnouncements() {
@@ -2718,7 +2760,7 @@
       });
 
 
-      document.getElementById("btnOpenUserModal").addEventListener("click", () => {
+      document.getElementById("btnOpenUserModal").addEventListener("click", async () => {
         editingUserId = null;
         document.getElementById("userModalTitle").textContent = "Novo operador";
         document.getElementById("userModalSubtitle").textContent = "Crie um usuário para realizar chamadas.";
@@ -2730,9 +2772,13 @@
         document.getElementById("uPass").placeholder = "mín. 6 caracteres";
         document.getElementById("uRole").value = "operator";
         document.getElementById("uActive").checked = true;
+        if (!lastServices.length) {
+          try { lastServices = await api("/tenant/services", { headers: authHeaders() }); } catch {}
+        }
+        renderServiceCheckboxes(lastServices, []);
         userModal.show();
       });
-      document.getElementById("usersTable").addEventListener("click", (e) => {
+      document.getElementById("usersTable").addEventListener("click", async (e) => {
         const btn = e.target.closest("[data-edit-user]");
         if (!btn) return;
         const id = (btn.getAttribute("data-edit-user") || "").trim();
@@ -2749,6 +2795,10 @@
         document.getElementById("uPass").value = "";
         document.getElementById("uPass").placeholder = "deixe em branco para manter";
         document.getElementById("uActive").checked = Boolean(user.active);
+        if (!lastServices.length) {
+          try { lastServices = await api("/tenant/services", { headers: authHeaders() }); } catch {}
+        }
+        renderServiceCheckboxes(lastServices, user.service_ids || []);
         userModal.show();
       });
       document.getElementById("btnSaveUser").addEventListener("click", async () => {
@@ -2757,12 +2807,13 @@
         const password = String(document.getElementById("uPass").value || "").trim();
         const role = document.getElementById("uRole").value || "operator";
         const active = Boolean(document.getElementById("uActive").checked);
+        const service_ids = collectCheckedServiceIds();
         if (!email) {
           swalErr("Operador", "Email é obrigatório.");
           return;
         }
         if (editingUserId) {
-          const payload = { email, full_name, role, active };
+          const payload = { email, full_name, role, active, service_ids };
           if (password) payload.password = password;
           await api(`/tenant/users/${editingUserId}`, { method: "PUT", headers: authHeaders(), body: JSON.stringify(payload) });
           userModal.hide();
@@ -2774,7 +2825,7 @@
             swalErr("Operador", "Senha é obrigatória para novo usuário.");
             return;
           }
-          await api("/tenant/users", { method: "POST", headers: authHeaders(), body: JSON.stringify({ email, full_name, password, role, active }) });
+          await api("/tenant/users", { method: "POST", headers: authHeaders(), body: JSON.stringify({ email, full_name, password, role, active, service_ids }) });
           userModal.hide();
           await refreshUsers();
           swalOk("Operador criado", "Usuário cadastrado.");

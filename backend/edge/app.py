@@ -1840,11 +1840,20 @@ def auth_login(payload: Dict[str, Any]):
 @app.get("/auth/me")
 def auth_me(authorization: Optional[str] = Header(default=None)):
     payload = require_jwt(authorization)
+    user_id = payload.get("sub")
+    full_name = None
+    with db_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT full_name FROM tenant_users WHERE id = %s", (user_id,))
+        row = cur.fetchone()
+        if row:
+            full_name = row.get("full_name")
     return {
-        "sub": payload.get("sub"),
+        "sub": user_id,
         "tenant_cpf_cnpj": payload.get("tenant_cpf_cnpj"),
         "email": payload.get("email"),
         "role": payload.get("role"),
+        "full_name": full_name,
     }
 
 
@@ -1857,14 +1866,21 @@ def list_users(authorization: Optional[str] = Header(default=None)):
         cur = conn.cursor(dictionary=True)
         cur.execute(
             """
-            SELECT id, email, full_name, role, active, created_at
-            FROM tenant_users
-            WHERE tenant_cpf_cnpj = %s
-            ORDER BY created_at DESC
+            SELECT tu.id, tu.email, tu.full_name, tu.role, tu.active, tu.created_at,
+                   GROUP_CONCAT(os.service_id) AS service_ids_csv
+            FROM tenant_users tu
+            LEFT JOIN operator_services os ON os.operator_id = tu.id
+            WHERE tu.tenant_cpf_cnpj = %s
+            GROUP BY tu.id
+            ORDER BY tu.created_at DESC
             """,
             (tenant_cpf_cnpj,),
         )
-        return cur.fetchall()
+        users = cur.fetchall()
+        for u in users:
+            csv = u.pop("service_ids_csv") or ""
+            u["service_ids"] = [x for x in csv.split(",") if x]
+        return users
 
 
 @app.post("/tenant/users")
@@ -1885,6 +1901,7 @@ def create_user(payload_in: Dict[str, Any], authorization: Optional[str] = Heade
 
     user_id = str(uuid.uuid4())
     pw_hash = hash_password(password)
+    service_ids = [s for s in (payload_in.get("service_ids") or []) if s]
 
     with db_conn() as conn:
         cur = conn.cursor()
@@ -1895,6 +1912,11 @@ def create_user(payload_in: Dict[str, Any], authorization: Optional[str] = Heade
             """,
             (user_id, tenant_cpf_cnpj, email, full_name, role, pw_hash, active),
         )
+        for svc_id in service_ids:
+            cur.execute(
+                "INSERT IGNORE INTO operator_services (operator_id, service_id) VALUES (%s, %s)",
+                (user_id, svc_id),
+            )
     return {"ok": True, "id": user_id}
 
 
@@ -1956,6 +1978,8 @@ def update_user(
         if not cur.fetchone():
             raise HTTPException(status_code=404, detail="User not found")
 
+        service_ids = [s for s in (payload_in.get("service_ids") or []) if s]
+
         if password:
             pw_hash = hash_password(password)
             cur.execute(
@@ -1970,6 +1994,12 @@ def update_user(
                    SET email = %s, full_name = %s, role = %s, active = %s
                    WHERE id = %s AND tenant_cpf_cnpj = %s""",
                 (email, full_name, role, 1 if active else 0, uid, tenant_cpf_cnpj),
+            )
+        cur.execute("DELETE FROM operator_services WHERE operator_id = %s", (uid,))
+        for svc_id in service_ids:
+            cur.execute(
+                "INSERT IGNORE INTO operator_services (operator_id, service_id) VALUES (%s, %s)",
+                (uid, svc_id),
             )
     return {"ok": True}
 
@@ -2744,33 +2774,67 @@ def get_tickets_queue(
     """
     Lista fila de senhas aguardando (operador vê).
     Query: ?priority=normal|preferential (opcional)
+    Se o operador tiver serviços atribuídos, filtra apenas por eles.
     """
     payload = require_jwt(authorization)
     tenant_cpf_cnpj = tenant_from_jwt(payload)
+    operator_id = payload.get("sub")
 
     with db_conn() as conn:
         cur = conn.cursor(dictionary=True)
 
-        if priority and priority in ("normal", "preferential"):
-            cur.execute(
-                """
-                SELECT id, ticket_code, service_name, priority, status, issued_at
-                FROM tickets
-                WHERE tenant_cpf_cnpj = %s AND status = 'waiting' AND priority = %s
-                ORDER BY issued_at ASC
-                """,
-                (tenant_cpf_cnpj, priority),
-            )
+        # Verificar serviços atribuídos ao operador
+        cur.execute(
+            "SELECT service_id FROM operator_services WHERE operator_id = %s",
+            (operator_id,),
+        )
+        op_svc_ids = [r["service_id"] for r in cur.fetchall()]
+
+        if op_svc_ids:
+            ph = ", ".join(["%s"] * len(op_svc_ids))
+            if priority and priority in ("normal", "preferential"):
+                cur.execute(
+                    f"""
+                    SELECT id, ticket_code, service_name, priority, status, issued_at
+                    FROM tickets
+                    WHERE tenant_cpf_cnpj = %s AND status = 'waiting'
+                      AND priority = %s AND service_id IN ({ph})
+                    ORDER BY issued_at ASC
+                    """,
+                    (tenant_cpf_cnpj, priority, *op_svc_ids),
+                )
+            else:
+                cur.execute(
+                    f"""
+                    SELECT id, ticket_code, service_name, priority, status, issued_at
+                    FROM tickets
+                    WHERE tenant_cpf_cnpj = %s AND status = 'waiting'
+                      AND service_id IN ({ph})
+                    ORDER BY priority DESC, issued_at ASC
+                    """,
+                    (tenant_cpf_cnpj, *op_svc_ids),
+                )
         else:
-            cur.execute(
-                """
-                SELECT id, ticket_code, service_name, priority, status, issued_at
-                FROM tickets
-                WHERE tenant_cpf_cnpj = %s AND status = 'waiting'
-                ORDER BY priority DESC, issued_at ASC
-                """,
-                (tenant_cpf_cnpj,),
-            )
+            if priority and priority in ("normal", "preferential"):
+                cur.execute(
+                    """
+                    SELECT id, ticket_code, service_name, priority, status, issued_at
+                    FROM tickets
+                    WHERE tenant_cpf_cnpj = %s AND status = 'waiting' AND priority = %s
+                    ORDER BY issued_at ASC
+                    """,
+                    (tenant_cpf_cnpj, priority),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT id, ticket_code, service_name, priority, status, issued_at
+                    FROM tickets
+                    WHERE tenant_cpf_cnpj = %s AND status = 'waiting'
+                    ORDER BY priority DESC, issued_at ASC
+                    """,
+                    (tenant_cpf_cnpj,),
+                )
 
         tickets = cur.fetchall()
 
@@ -2789,22 +2853,41 @@ def get_tickets_queue(
 
 @app.get("/tickets/queue/stats")
 def get_queue_stats(authorization: Optional[str] = Header(default=None)):
-    """Estatísticas da fila (contadores)."""
+    """Estatísticas da fila (contadores). Respeita serviços do operador quando configurados."""
     payload = require_jwt(authorization)
     tenant_cpf_cnpj = tenant_from_jwt(payload)
+    operator_id = payload.get("sub")
 
     with db_conn() as conn:
         cur = conn.cursor(dictionary=True)
 
         cur.execute(
-            """
-            SELECT priority, COUNT(*) AS count
-            FROM tickets
-            WHERE tenant_cpf_cnpj = %s AND status = 'waiting'
-            GROUP BY priority
-            """,
-            (tenant_cpf_cnpj,),
+            "SELECT service_id FROM operator_services WHERE operator_id = %s",
+            (operator_id,),
         )
+        op_svc_ids = [r["service_id"] for r in cur.fetchall()]
+
+        if op_svc_ids:
+            ph = ", ".join(["%s"] * len(op_svc_ids))
+            cur.execute(
+                f"""
+                SELECT priority, COUNT(*) AS count
+                FROM tickets
+                WHERE tenant_cpf_cnpj = %s AND status = 'waiting' AND service_id IN ({ph})
+                GROUP BY priority
+                """,
+                (tenant_cpf_cnpj, *op_svc_ids),
+            )
+        else:
+            cur.execute(
+                """
+                SELECT priority, COUNT(*) AS count
+                FROM tickets
+                WHERE tenant_cpf_cnpj = %s AND status = 'waiting'
+                GROUP BY priority
+                """,
+                (tenant_cpf_cnpj,),
+            )
         rows = cur.fetchall()
         stats = {"normal": 0, "preferential": 0, "total": 0}
         for r in rows:
@@ -2860,6 +2943,18 @@ def call_ticket(ticket_id: str, payload_in: Dict[str, Any], authorization: Optio
             raise HTTPException(status_code=404, detail="Ticket not found")
         if ticket["status"] not in ("waiting", "called"):
             raise HTTPException(status_code=400, detail=f"Ticket cannot be called (status: {ticket['status']})")
+
+        # Se o operador tem serviços atribuídos, só pode chamar ticket desse(s) serviço(s)
+        cur.execute(
+            "SELECT service_id FROM operator_services WHERE operator_id = %s",
+            (operator_id,),
+        )
+        op_svc_ids = [r["service_id"] for r in cur.fetchall()]
+        if op_svc_ids and ticket.get("service_id") not in op_svc_ids:
+            raise HTTPException(
+                status_code=403,
+                detail="Este ticket não pertence aos serviços que você atende.",
+            )
 
         is_recall = ticket["status"] == "called"
         now = utc_now()
@@ -3055,38 +3150,82 @@ def call_next_ticket(payload_in: Dict[str, Any], authorization: Optional[str] = 
         if not counter:
             raise HTTPException(status_code=404, detail="Counter not found")
 
+        # Verificar serviços atribuídos ao operador
+        cur.execute(
+            "SELECT service_id FROM operator_services WHERE operator_id = %s",
+            (operator_id,),
+        )
+        op_svc_ids = [r["service_id"] for r in cur.fetchall()]
+
         # Buscar próximo ticket (preferencial primeiro, se não filtrado)
-        if priority == "preferential":
-            cur.execute(
-                """
-                SELECT * FROM tickets
-                WHERE tenant_cpf_cnpj = %s AND status = 'waiting' AND priority = 'preferential'
-                ORDER BY issued_at ASC
-                LIMIT 1
-                """,
-                (tenant_cpf_cnpj,),
-            )
-        elif priority == "normal":
-            cur.execute(
-                """
-                SELECT * FROM tickets
-                WHERE tenant_cpf_cnpj = %s AND status = 'waiting' AND priority = 'normal'
-                ORDER BY issued_at ASC
-                LIMIT 1
-                """,
-                (tenant_cpf_cnpj,),
-            )
+        # Se o operador tiver serviços atribuídos, filtra apenas por eles
+        if op_svc_ids:
+            ph = ", ".join(["%s"] * len(op_svc_ids))
+            if priority == "preferential":
+                cur.execute(
+                    f"""
+                    SELECT * FROM tickets
+                    WHERE tenant_cpf_cnpj = %s AND status = 'waiting'
+                      AND priority = 'preferential' AND service_id IN ({ph})
+                    ORDER BY issued_at ASC
+                    LIMIT 1
+                    """,
+                    (tenant_cpf_cnpj, *op_svc_ids),
+                )
+            elif priority == "normal":
+                cur.execute(
+                    f"""
+                    SELECT * FROM tickets
+                    WHERE tenant_cpf_cnpj = %s AND status = 'waiting'
+                      AND priority = 'normal' AND service_id IN ({ph})
+                    ORDER BY issued_at ASC
+                    LIMIT 1
+                    """,
+                    (tenant_cpf_cnpj, *op_svc_ids),
+                )
+            else:
+                cur.execute(
+                    f"""
+                    SELECT * FROM tickets
+                    WHERE tenant_cpf_cnpj = %s AND status = 'waiting'
+                      AND service_id IN ({ph})
+                    ORDER BY FIELD(priority, 'preferential', 'normal'), issued_at ASC
+                    LIMIT 1
+                    """,
+                    (tenant_cpf_cnpj, *op_svc_ids),
+                )
         else:
-            # Prioridade: preferencial > normal (por ordem de emissão dentro de cada grupo)
-            cur.execute(
-                """
-                SELECT * FROM tickets
-                WHERE tenant_cpf_cnpj = %s AND status = 'waiting'
-                ORDER BY FIELD(priority, 'preferential', 'normal'), issued_at ASC
-                LIMIT 1
-                """,
-                (tenant_cpf_cnpj,),
-            )
+            if priority == "preferential":
+                cur.execute(
+                    """
+                    SELECT * FROM tickets
+                    WHERE tenant_cpf_cnpj = %s AND status = 'waiting' AND priority = 'preferential'
+                    ORDER BY issued_at ASC
+                    LIMIT 1
+                    """,
+                    (tenant_cpf_cnpj,),
+                )
+            elif priority == "normal":
+                cur.execute(
+                    """
+                    SELECT * FROM tickets
+                    WHERE tenant_cpf_cnpj = %s AND status = 'waiting' AND priority = 'normal'
+                    ORDER BY issued_at ASC
+                    LIMIT 1
+                    """,
+                    (tenant_cpf_cnpj,),
+                )
+            else:
+                # Prioridade: preferencial > normal (por ordem de emissão dentro de cada grupo)
+                cur.execute(
+                    """
+                    SELECT * FROM tickets
+                    WHERE tenant_cpf_cnpj = %s AND status = 'waiting'
+                    ORDER BY FIELD(priority, 'preferential', 'normal'), issued_at ASC
+                    LIMIT 1
+                    """,
+                    (tenant_cpf_cnpj,),
+                )
 
         ticket = cur.fetchone()
         if not ticket:

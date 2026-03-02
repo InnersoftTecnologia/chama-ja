@@ -203,11 +203,39 @@ def build_ticket_escpos(
 def send_to_printer(escpos_bytes: bytes, device: Optional[str] = None) -> bool:
     """
     Envia os bytes ESC/POS para o dispositivo da impressora.
+    Suporta impressoras USB (/dev/usb/lp1) e de rede (host:porta ou IP puro, porta padrão 9100).
     Retorna True se enviou com sucesso, False caso contrário (sem falhar).
     """
+    import socket as _socket
+
     path = (device or os.environ.get("PRINTER_DEVICE") or "/dev/usb/lp1").strip()
     if not path:
         return False
+
+    # Detecta endereço TCP: "host:porta" ou IP sem "/" (ex: "192.168.1.100" ou "192.168.1.100:9100")
+    is_tcp = ":" in path and not path.startswith("/")
+    if not is_tcp and not path.startswith("/") and path.replace(".", "").isdigit():
+        is_tcp = True  # IP sem porta
+
+    if is_tcp:
+        if ":" in path:
+            host, port_str = path.rsplit(":", 1)
+            try:
+                port = int(port_str)
+            except ValueError:
+                logger.warning("Porta invalida na configuracao da impressora: %s", path)
+                return False
+        else:
+            host, port = path, 9100
+        try:
+            with _socket.create_connection((host, port), timeout=5) as s:
+                s.sendall(escpos_bytes)
+            logger.info("Ticket enviado para impressora TCP %s:%d", host, port)
+            return True
+        except OSError as e:
+            logger.warning("Erro ao enviar para impressora TCP %s:%d: %s", host, port, e)
+            return False
+
     if not os.path.exists(path):
         logger.debug("Impressora nao encontrada: %s", path)
         return False

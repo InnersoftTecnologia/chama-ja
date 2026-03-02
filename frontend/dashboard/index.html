@@ -36,6 +36,22 @@
     </div>
   </footer>
 
+  <!-- Modal de acompanhamento em tempo real -->
+  <div id="monitorModal" class="monitor-overlay" role="dialog" aria-modal="true" aria-label="Acompanhamento em tempo real" hidden>
+    <div class="monitor-dialog">
+      <div class="monitor-header">
+        <span class="monitor-title">Acompanhamento em tempo real</span>
+        <button class="monitor-close" id="monitorClose" aria-label="Fechar">&times;</button>
+      </div>
+      <div class="monitor-body" id="monitorBody">
+        <p class="monitor-loading">Carregando…</p>
+      </div>
+      <div class="monitor-footer">
+        <span id="monitorUpdatedAt" class="monitor-updated"></span>
+      </div>
+    </div>
+  </div>
+
   <script src="dashboard.js"></script>
 </body>
 </html>

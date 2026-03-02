@@ -1,10 +1,8 @@
 (function () {
   const host = window.location.hostname;
   const protocol = window.location.protocol;
-  const EDGE_PORT = 7071;
-  const TOTEM_PORT = 7076;
-  const EDGE_BASE = `${protocol}//${host}:${EDGE_PORT}`;
-  const EDGE_TOKEN = "dev-edge-token";
+  const EDGE_BASE = (window.EDGE_BASE || `${protocol}//${host}:7071`).replace(/\/$/, "");
+  const EDGE_TOKEN = window.EDGE_TOKEN || "dev-edge-token";
 
   // ── Monitor modal ──────────────────────────────────────────────
   let monitorInterval = null;
@@ -113,6 +111,7 @@
       title: "TV / Painel",
       desc: "Monitor de chamadas — exibe senhas, histórico e mídia.",
       port: 7073,
+      navPath: "/tv/",
     },
     {
       id: "operador",
@@ -120,6 +119,7 @@
       title: "Operador",
       desc: "Interface do atendente — chamar senhas, guichê, fila.",
       port: 7074,
+      navPath: "/op/",
     },
     {
       id: "admin",
@@ -127,6 +127,7 @@
       title: "Admin Tenant",
       desc: "Configurações — operadores, guichês, serviços, TV, playlist.",
       port: 7075,
+      navPath: "/admin/",
     },
     {
       id: "totem",
@@ -134,6 +135,7 @@
       title: "Totem",
       desc: "Emissão de senhas — tela touch para o cliente.",
       port: 7076,
+      navPath: "/totem/",
     },
     {
       id: "test",
@@ -141,6 +143,7 @@
       title: "Test UI",
       desc: "Interface de teste (legado).",
       port: 7072,
+      navPath: "/test/",
     },
     {
       id: "edge",
@@ -148,7 +151,7 @@
       title: "Edge API",
       desc: "Backend — health e documentação.",
       port: 7071,
-      path: "/health",
+      navPath: "/api/health",
     },
   ];
 
@@ -167,8 +170,12 @@
   }
 
   function buildUrl(app, useHost) {
+    // Em produção (via Nginx) usa navPath; em dev local usa porta
+    if (app.navPath && window.EDGE_BASE) {
+      return `${protocol}//${host}${app.navPath}`;
+    }
     const h = useHost != null ? useHost : host;
-    const path = app.path || "/";
+    const path = app.navPath || app.path || "/";
     return `${protocol}//${h}:${app.port}${path}`;
   }
 
@@ -190,7 +197,7 @@
         <div class="card-icon">${app.icon}</div>
         <h2 class="card-title">${escapeHtml(app.title)}</h2>
         <p class="card-desc">${escapeHtml(app.desc)}</p>
-        <span class="card-badge">:${app.port}</span>
+        <span class="card-badge">${window.EDGE_BASE ? (app.navPath || "/") : ":" + app.port}</span>
         ${isTotem ? `
         <div class="card-qr">
           <p class="card-qr-label">Acesse pelo celular ou tablet</p>

@@ -689,7 +689,7 @@
               </div>
               <div class="mb-3">
                 <label class="form-label">Senha</label>
-                <input id="password" type="password" class="form-control" value="admin123" autocomplete="current-password" />
+                <input id="password" type="password" class="form-control" autocomplete="current-password" />
               </div>
 
               <div class="d-flex align-items-center justify-content-between mb-3">
@@ -766,7 +766,7 @@
         </li>
         <li class="nav-item" role="presentation">
           <button class="nav-link" id="tab-tv-panel" data-bs-toggle="tab" data-bs-target="#pane-tv-panel" type="button" role="tab" aria-controls="pane-tv-panel" aria-selected="false">
-            <span class="tab-icon">📺</span> Painel do Chamador
+            <span class="tab-icon">📺</span> Configurações
           </button>
         </li>
       </ul>
@@ -1168,6 +1168,24 @@
                     </div>
                   </div>
                 </div>
+                <!-- Card: Destaque Preferencial TTS -->
+                <div class="col-12 col-lg-6">
+                  <div class="border rounded-4 p-3 bg-body-tertiary h-100">
+                    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap mb-2">
+                      <div>
+                        <div class="fw-bold">Destaque Preferencial</div>
+                        <div class="text-body-secondary small">Fala "PREFERENCIAL" após o código da senha preferencial.</div>
+                      </div>
+                      <div class="d-flex gap-2">
+                        <button type="button" id="btnAnnouncePreferentialToggle" class="btn-action btn-toggle-off tv-toggle-btn" style="min-width: 110px;">Desativado</button>
+                      </div>
+                    </div>
+                    <div class="alert alert-soft small mb-0 mt-3">
+                      Quando ativo, o chamador anuncia: <b>"Senha PR-001 PREFERENCIAL, Setor de Cobrança."</b> — útil para dar atenção a idosos e PCD.
+                    </div>
+                  </div>
+                </div>
+
                 <!-- Card: Logo do Tenant (Branding) -->
                 <div class="col-12 col-lg-6">
                   <div class="border rounded-4 p-3 bg-body-tertiary h-100">
@@ -1243,6 +1261,7 @@
                 </div>
                 <div class="d-flex gap-2">
                   <button id="btnRefreshPrinterSettings" class="btn-action btn-refresh">Atualizar</button>
+                  <button id="btnInstallAgent" class="btn-action btn-new">Instalar Agente</button>
                   <button id="btnTestPrint" class="btn-action btn-toggle-on">Testar Impressão</button>
                   <button id="btnSavePrinterSettings" class="btn-action btn-save">Salvar</button>
                 </div>
@@ -1715,6 +1734,62 @@
       </div>
     </div>
 
+    <!-- Modal: Instalar Print Agent -->
+    <div class="modal fade" id="installAgentModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content modal-padrao-content">
+          <div class="modal-header modal-padrao-header">
+            <div>
+              <div class="fw-bold" style="font-size:1.15rem;">Instalar Print Agent</div>
+              <div class="small opacity-75">Copie e cole os comandos no terminal da máquina que ficará conectada à impressora.</div>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+          </div>
+          <div class="modal-body p-4">
+            <!-- Como funciona -->
+            <div class="alert alert-info small rounded-3 mb-3 py-2">
+              <strong>Como funciona:</strong> o Print Agent é um programa que roda na máquina conectada à impressora. Ele fica em loop consultando o servidor a cada 2 segundos e, quando há uma senha na fila, envia os dados de impressão diretamente para a impressora via rede TCP (porta 9100).
+            </div>
+            <!-- Abas Linux / Windows -->
+            <ul class="nav nav-tabs mb-3" id="agentTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="tab-linux" data-bs-toggle="tab" data-bs-target="#pane-linux" type="button" role="tab">Linux / macOS</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="tab-windows" data-bs-toggle="tab" data-bs-target="#pane-windows" type="button" role="tab">Windows</button>
+              </li>
+            </ul>
+            <div class="tab-content">
+              <!-- Linux -->
+              <div class="tab-pane fade show active" id="pane-linux" role="tabpanel">
+                <p class="small text-body-secondary mb-2">Requer apenas <code>python3</code> (já presente na maioria das distros Linux). Cole no terminal e pressione Enter.</p>
+                <div class="position-relative">
+                  <pre id="cmdLinux" class="bg-dark text-success rounded-3 p-3 font-monospace small" style="white-space:pre-wrap;word-break:break-all;"></pre>
+                  <button type="button" id="btnCopyLinux" class="btn-action btn-save position-absolute" style="top:10px;right:10px;padding:4px 12px;font-size:11px;">Copiar</button>
+                </div>
+                <p class="small text-body-secondary mt-2 mb-0">Para rodar em segundo plano: <code>nohup python3 print-agent.py TOKEN &amp;</code></p>
+              </div>
+              <!-- Windows -->
+              <div class="tab-pane fade" id="pane-windows" role="tabpanel">
+                <div class="d-flex align-items-center justify-content-between mb-2 flex-wrap gap-2">
+                  <p class="small text-body-secondary mb-0">Executável standalone — sem instalação, sem runtime. Baixe o zip, extraia e execute.</p>
+                  <a id="btnDownloadZip" href="#" download class="btn-action btn-new" style="padding:5px 14px;font-size:12px;text-decoration:none;">⬇ Baixar .zip</a>
+                </div>
+                <div class="position-relative">
+                  <pre id="cmdWindows" class="bg-dark text-success rounded-3 p-3 font-monospace small" style="white-space:pre-wrap;word-break:break-all;"></pre>
+                  <button type="button" id="btnCopyWindows" class="btn-action btn-save position-absolute" style="top:10px;right:10px;padding:4px 12px;font-size:11px;">Copiar</button>
+                </div>
+                <p class="small text-body-secondary mt-2 mb-0">Cole os comandos no <strong>PowerShell</strong> ou <strong>Prompt de Comando</strong>. Para encerrar: <kbd>Ctrl+C</kbd>.</p>
+              </div>
+            </div>
+            <div class="alert alert-warning small mt-3 mb-0 rounded-3">
+              <strong>Importante:</strong> o token já está embutido nos comandos. Mantenha-o em segredo. Se precisar trocar, use o botão <em>Gerar novo token</em> e gere novos comandos.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Service Modal (SCart-style) -->
     <div class="modal fade" id="serviceModal" tabindex="-1" aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -2126,7 +2201,7 @@
       }
 
       // TV Settings state
-      let currentTVSettings = { tv_theme: "dark", tv_audio_enabled: true, tv_call_sound: "notification-1.mp3", tv_video_muted: true, tv_video_paused: false, tts_enabled: false, tts_voice: "pf_dora", tts_speed: 0.85, tts_volume: 1.0 };
+      let currentTVSettings = { tv_theme: "dark", tv_audio_enabled: true, tv_call_sound: "notification-1.mp3", tv_video_muted: true, tv_video_paused: false, tts_enabled: false, tts_voice: "pf_dora", tts_speed: 0.85, tts_volume: 1.0, tv_announce_preferential: false };
 
       async function refreshTVSettings() {
         try {
@@ -2198,6 +2273,14 @@
         setSingleToggle(
           document.getElementById("btnTtsToggle"),
           currentTVSettings.tts_enabled,
+          "Ativado",
+          "Desativado"
+        );
+
+        // Destaque Preferencial TTS
+        setSingleToggle(
+          document.getElementById("btnAnnouncePreferentialToggle"),
+          currentTVSettings.tv_announce_preferential,
           "Ativado",
           "Desativado"
         );
@@ -2450,19 +2533,32 @@
       }
 
       document.getElementById("btnLogin").addEventListener("click", async () => {
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+        if (!email || !password) {
+          setStatus("Preencha o e-mail e a senha.");
+          return;
+        }
         try {
-          setStatus("Entrando...");
-          const payload = {
-            email: document.getElementById("email").value,
-            password: document.getElementById("password").value,
-          };
-          const data = await api("/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+          setStatus("Verificando credenciais...");
+          const data = await api("/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
           setToken(data.access_token);
           await afterLogin();
-          swalOk("Login OK", "Bem-vindo!");
+          setStatus("Autenticado.");
         } catch (e) {
-          setStatus(`Falha no login: ${String(e)}`);
-          swalErr("Falha no login", String(e));
+          const msg = String(e);
+          let friendly;
+          if (msg.includes("401")) {
+            friendly = "E-mail ou senha incorretos. Verifique suas credenciais e tente novamente.";
+          } else if (msg.includes("429")) {
+            friendly = "Muitas tentativas de login. Aguarde alguns minutos e tente novamente.";
+          } else if (msg.includes("400")) {
+            friendly = "Preencha o e-mail e a senha corretamente.";
+          } else {
+            friendly = "Não foi possível conectar ao servidor. Tente novamente em instantes.";
+          }
+          setStatus(friendly);
+          swalErr("Falha no acesso", friendly);
         }
       });
 
@@ -3070,6 +3166,34 @@
         }
       });
 
+      // Install Agent modal
+      document.getElementById("btnInstallAgent").addEventListener("click", () => {
+        const token = document.getElementById("inputPrintAgentToken").value.trim();
+        if (!token) { swalErr("Token ausente", "Clique em Atualizar para carregar o token da impressora."); return; }
+        const base = "https://innersoft.com.br/downloads";
+        const linux = [
+          `curl -sO ${base}/print-agent.py`,
+          `python3 print-agent.py ${token}`,
+        ].join("\n");
+        const windows = [
+          `curl.exe -L -o print-agent.zip ${base}/print-agent.zip`,
+          `Expand-Archive -Force print-agent.zip .`,
+          `.\\print-agent.exe ${token}`,
+        ].join("\n");
+        document.getElementById("cmdLinux").textContent = linux;
+        document.getElementById("cmdWindows").textContent = windows;
+        document.getElementById("btnDownloadZip").href = `${base}/print-agent.zip`;
+        new bootstrap.Modal(document.getElementById("installAgentModal")).show();
+      });
+      document.getElementById("btnCopyLinux").addEventListener("click", () => {
+        navigator.clipboard.writeText(document.getElementById("cmdLinux").textContent)
+          .then(() => swalOk("Copiado", "Comandos Linux copiados para a área de transferência."));
+      });
+      document.getElementById("btnCopyWindows").addEventListener("click", () => {
+        navigator.clipboard.writeText(document.getElementById("cmdWindows").textContent)
+          .then(() => swalOk("Copiado", "Comandos Windows copiados para a área de transferência."));
+      });
+
       // TV Settings buttons
       document.getElementById("btnRefreshTVSettings").addEventListener("click", refreshTVSettings);
       document.getElementById("btnResetHistory").addEventListener("click", async () => {
@@ -3139,6 +3263,11 @@
       });
       document.getElementById("btnTtsToggle").addEventListener("click", async () => {
         currentTVSettings.tts_enabled = !currentTVSettings.tts_enabled;
+        updateTVSettingsUI();
+        await saveTVSettings();
+      });
+      document.getElementById("btnAnnouncePreferentialToggle").addEventListener("click", async () => {
+        currentTVSettings.tv_announce_preferential = !currentTVSettings.tv_announce_preferential;
         updateTVSettingsUI();
         await saveTVSettings();
       });

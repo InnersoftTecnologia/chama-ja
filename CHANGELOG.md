@@ -8,6 +8,39 @@ Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/).
 
 ## [Unreleased]
 
+### Adicionado — Prefixos NR/PR, Destaque Preferencial TTS e Redesign do Totem
+
+#### Prefixos de senha por prioridade
+- **Coluna `ticket_prefix` expandida** de `CHAR(1)` para `VARCHAR(5)` nas tabelas `services` e `ticket_sequences` — suporte a prefixos multi-caractere (ex: `NR`, `PR`)
+- **Prefixos automáticos por prioridade** — serviços normais recebem prefixo `NR-001`, preferenciais recebem `PR-001`
+- Senhas emitidas pelo totem agora seguem o padrão: `NR-001`, `NR-002` (normal) e `PR-001`, `PR-002` (preferencial)
+
+#### Destaque Preferencial no TTS
+- **Nova coluna `tv_announce_preferential`** (`TINYINT(1)`, padrão `0`) na tabela `tenants`
+- **`_format_call_text`** aceita parâmetros `priority` e `announce_preferential` — quando ambos ativos, insere `" PREFERENCIAL"` após o código da senha: *"Senha P R zero zero um PREFERENCIAL, Setor de Cobrança."*
+- **`_prefetch_tts`** busca `tv_announce_preferential` do banco e pré-gera o áudio correto
+- **`POST /tickets/{id}/call`** passa a prioridade do ticket para o prefetch
+- **`GET /api/tts/call`** aceita query params `priority` e `announce_preferential`
+- **`GET/POST /tenant/tv-settings`** incluem o campo `tv_announce_preferential`
+- **TV (`tv.js`)** carrega `state.announcePreferential` das configurações e passa `priority` + `announce_preferential` na URL do TTS
+- **Admin Tenant** — novo card **"Destaque Preferencial"** na aba Configurações com toggle Ativado/Desativado; persiste via `/tenant/tv-settings`
+
+#### Autenticação unificada
+- **Senha `admin123` hardcoded removida** do campo senha do `admin-tenant/index.html` — ambas as telas de login (`/fcosta-gus/` e `/fcosta-gus/admin/`) usam agora a mesma fonte de verdade: tabela `tenant_users` no MySQL
+- Script `scripts/set_admin_password.py` executado na VPS para definir senha como `admin` para o tenant `fcosta-gus`
+
+#### Redesign do Totem (tablet + acessibilidade)
+- **Layout ícone esquerda + texto direita** em todos os botões e cards de serviço — simetria e alinhamento para leitura fácil
+- **Fonte base 18px** (20px em tablets ≥768px) — legibilidade para idosos e crianças
+- **Touch targets mínimos de 88–100px** de altura
+- Botões de escolha com subtítulo: *"Atendimento geral"* / *"Idosos, Gestantes e PCD"*
+- Cards de serviço exibem apenas o **nome do serviço** (subtítulo "Fatura e Cartão" removido)
+- **Logo carregada da API** (`logo_base64` via `/tv/state`) — mesma fonte do painel admin, sem arquivo estático
+- CSS completamente redesenhado: variáveis de cor, sombras, bordas coloridas por prioridade, animação `popIn` no overlay
+
+#### Outros
+- Aba **"Painel do Chamador"** renomeada para **"Configurações"** no `admin-tenant`
+
 ### Adicionado — Gerenciamento do Kokoro no gerenciar.sh
 - **Variáveis de ambiente** `KOKORO_PORT` (padrão 8880), `KOKORO_DIR` (padrão `<projeto>/kokoro`) e `KOKORO_TTS_URL` — o Kokoro pode ser movido para qualquer caminho no servidor (`/opt/kokoro`, `/home/kokoro`, etc.) sem alterar código
 - **`./gerenciar.sh kokoro start`** — sobe o container `kokoro-api` via `docker compose up -d` a partir de `KOKORO_DIR`; aguarda até 60 s o `/health` responder

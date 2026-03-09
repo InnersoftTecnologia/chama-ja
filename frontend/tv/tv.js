@@ -440,6 +440,7 @@ function applyTenantBranding(tenant) {
   state.ttsVoice = (tenant.tts_voice || "pf_dora").trim() || "pf_dora";
   state.ttsSpeed = parseFloat(tenant.tts_speed) || 0.85;
   state.ttsVolume = parseFloat(tenant.tts_volume) || 1.0;
+  state.announcePreferential = tenant.tv_announce_preferential === true || tenant.tv_announce_preferential === 1;
   // Apply video controls
   applyVideoControls(tenant);
   
@@ -530,7 +531,9 @@ async function playCallAudio(call) {
         `&counter_name=${encodeURIComponent(call.counter_name || "")}` +
         `&voice=${encodeURIComponent(state.ttsVoice || "pf_dora")}` +
         `&speed=${state.ttsSpeed || 0.85}` +
-        `&volume=${state.ttsVolume || 1.0}`;
+        `&volume=${state.ttsVolume || 1.0}` +
+        `&priority=${encodeURIComponent(call.priority || "")}` +
+        `&announce_preferential=${state.announcePreferential ? 1 : 0}`;
       ttsAudio = new Audio(ttsUrl);
       ttsAudio.volume = 1.0;
       ttsAudio.preload = "auto";

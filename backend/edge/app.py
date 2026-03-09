@@ -12,11 +12,11 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple
 from urllib.parse import quote
-from urllib.request import Request, urlopen
+from urllib.request import Request as UrllibRequest, urlopen
 
 import mysql.connector
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Header, HTTPException, Query, UploadFile
+from fastapi import FastAPI, File, Header, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from PIL import Image
@@ -38,6 +38,24 @@ APP_PORT = int(os.getenv("EDGE_PORT", "7071"))
 DEVICE_TOKEN = os.getenv("EDGE_DEVICE_TOKEN", "dev-edge-token")
 EDGE_TENANT_CPF_CNPJ = os.getenv("EDGE_TENANT_CPF_CNPJ")  # optional: pin tenant on this edge instance
 MIGRATIONS_DIR = os.path.join(os.path.dirname(__file__), "migrations")
+
+OWNER_EMAIL = os.getenv("OWNER_EMAIL", "")
+OWNER_PASSWORD_HASH = os.getenv("OWNER_PASSWORD_HASH", "")
+
+# ---------------------------------------------------------------------------
+# Rate limiter simples em memória (sem deps extras, single-process)
+# ---------------------------------------------------------------------------
+from collections import defaultdict as _defaultdict
+
+_rl_store: dict = _defaultdict(list)
+
+
+def _check_rate_limit(key: str, max_req: int, window_sec: int = 60) -> None:
+    now = time.time()
+    _rl_store[key] = [t for t in _rl_store[key] if now - t < window_sec]
+    if len(_rl_store[key]) >= max_req:
+        raise HTTPException(status_code=429, detail="Muitas tentativas. Aguarde e tente novamente.")
+    _rl_store[key].append(now)
 
 
 def utc_now() -> datetime:
@@ -384,7 +402,7 @@ def fetch_youtube_oembed(video_url: str) -> Dict[str, Any]:
     """
     # https://www.youtube.com/oembed?url=...&format=json
     oembed_url = f"https://www.youtube.com/oembed?url={quote(video_url, safe='')}&format=json"
-    req = Request(oembed_url, headers={"User-Agent": "Chamador/1.0 (+oEmbed)"})
+    req = UrllibRequest(oembed_url, headers={"User-Agent": "Chamador/1.0 (+oEmbed)"})
     try:
         with urlopen(req, timeout=6) as resp:
             raw = resp.read().decode("utf-8", errors="replace")
@@ -398,9 +416,24 @@ def fetch_youtube_oembed(video_url: str) -> Dict[str, Any]:
         return {}
 
 
-def resolve_tenant_cpf_cnpj() -> Optional[str]:
+def resolve_tenant_cpf_cnpj(request: Optional[Request] = None) -> Optional[str]:
+    # 1. Env var override (compatibilidade retroativa / single-tenant)
     if EDGE_TENANT_CPF_CNPJ:
         return EDGE_TENANT_CPF_CNPJ
+    # 2. Slug injetado pelo nginx via header ou query param (multi-tenant)
+    if request:
+        slug = request.headers.get("X-Tenant-Slug") or request.query_params.get("slug")
+        if slug:
+            with db_conn() as conn:
+                cur = conn.cursor(dictionary=True)
+                cur.execute(
+                    "SELECT cpf_cnpj FROM tenants WHERE slug = %s AND situacao = 'ativo'",
+                    (slug,),
+                )
+                row = cur.fetchone()
+                if row:
+                    return row["cpf_cnpj"]
+    # 3. Fallback: primeiro tenant ativo (dev local / compatibilidade)
     with db_conn() as conn:
         cur = conn.cursor(dictionary=True)
         cur.execute("SELECT cpf_cnpj FROM tenants WHERE situacao = 'ativo' ORDER BY created_at ASC LIMIT 1")
@@ -408,13 +441,13 @@ def resolve_tenant_cpf_cnpj() -> Optional[str]:
         return row["cpf_cnpj"] if row else None
 
 
-def fetch_state() -> Dict[str, Any]:
-    tenant_cpf_cnpj = resolve_tenant_cpf_cnpj()
+def fetch_state(request: Optional[Request] = None) -> Dict[str, Any]:
+    tenant_cpf_cnpj = resolve_tenant_cpf_cnpj(request)
     with db_conn() as conn:
         cur = conn.cursor(dictionary=True)
         cur.execute(
             """
-            SELECT cpf_cnpj, nome_razao_social, nome_fantasia, situacao, logo_base64, tv_theme, tv_audio_enabled, tv_call_sound, tv_video_muted, tv_video_paused, admin_playlist_filter,
+            SELECT cpf_cnpj, slug, nome_razao_social, nome_fantasia, situacao, logo_base64, tv_theme, tv_audio_enabled, tv_call_sound, tv_video_muted, tv_video_paused, admin_playlist_filter,
                    tts_enabled, tts_voice, tts_speed, tts_volume
             FROM tenants
             WHERE cpf_cnpj = %s
@@ -632,8 +665,8 @@ def fetch_state() -> Dict[str, Any]:
 
 
 @app.get("/tv/state")
-def tv_state():
-    return JSONResponse(fetch_state())
+def tv_state(request: Request):
+    return JSONResponse(fetch_state(request))
 
 
 @app.get("/tenant/me")
@@ -1598,7 +1631,7 @@ def _tts_cache_dir() -> str:
     return os.path.join(os.getcwd(), ".run", "tts_cache")
 
 
-def _format_call_text(ticket_code: str, service_name: str, counter_name: str = "") -> str:
+def _format_call_text(ticket_code: str, service_name: str, counter_name: str = "", priority: str = "", announce_preferential: bool = False) -> str:
     parts = []
     for ch in (ticket_code or "").upper():
         if ch.isdigit():
@@ -1606,18 +1639,19 @@ def _format_call_text(ticket_code: str, service_name: str, counter_name: str = "
         elif ch.isalpha():
             parts.append(ch)
     ticket_text = " ".join(parts) if parts else ticket_code
+    pref_suffix = " PREFERENCIAL" if (priority == "preferential" and announce_preferential) else ""
     label = service_name.strip() if service_name and service_name.strip() else counter_name.strip()
-    return f"Senha {ticket_text}, {label}." if label else f"Senha {ticket_text}."
+    return f"Senha {ticket_text}{pref_suffix}, {label}." if label else f"Senha {ticket_text}{pref_suffix}."
 
 
-def _prefetch_tts(tenant_cpf_cnpj: str, ticket_code: str, service_name: str, counter_name: str) -> None:
+def _prefetch_tts(tenant_cpf_cnpj: str, ticket_code: str, service_name: str, counter_name: str, priority: str = "") -> None:
     """Pré-gera o MP3 do TTS em background para eliminar latência na TV."""
     def _run():
         try:
             with db_conn() as conn:
                 cur = conn.cursor(dictionary=True)
                 cur.execute(
-                    "SELECT tts_enabled, tts_voice, tts_speed, tts_volume FROM tenants WHERE cpf_cnpj = %s",
+                    "SELECT tts_enabled, tts_voice, tts_speed, tts_volume, tv_announce_preferential FROM tenants WHERE cpf_cnpj = %s",
                     (tenant_cpf_cnpj,),
                 )
                 row = cur.fetchone()
@@ -1626,7 +1660,8 @@ def _prefetch_tts(tenant_cpf_cnpj: str, ticket_code: str, service_name: str, cou
             voice = (row.get("tts_voice") or "pf_dora").strip() or "pf_dora"
             speed = max(0.25, min(4.0, float(row.get("tts_speed") or 0.85)))
             volume = max(0.1, min(4.0, float(row.get("tts_volume") or 1.0)))
-            text = _format_call_text(ticket_code, service_name, counter_name)
+            announce_preferential = bool(row.get("tv_announce_preferential", 0))
+            text = _format_call_text(ticket_code, service_name, counter_name, priority=priority, announce_preferential=announce_preferential)
             cache_key = hashlib.md5(f"{text}|{voice}|{speed:.2f}|{volume:.2f}".encode()).hexdigest()
             cache_file = os.path.join(_tts_cache_dir(), f"{cache_key}.mp3")
             if os.path.isfile(cache_file):
@@ -1640,7 +1675,7 @@ def _prefetch_tts(tenant_cpf_cnpj: str, ticket_code: str, service_name: str, cou
                 "speed": speed,
                 "volume_multiplier": volume,
             }).encode()
-            req = Request(_TTS_KOKORO_URL, data=payload, headers={"Content-Type": "application/json"})
+            req = UrllibRequest(_TTS_KOKORO_URL, data=payload, headers={"Content-Type": "application/json"})
             with urlopen(req, timeout=15) as resp:
                 audio_bytes = resp.read()
             with open(cache_file, "wb") as f:
@@ -1653,7 +1688,8 @@ def _prefetch_tts(tenant_cpf_cnpj: str, ticket_code: str, service_name: str, cou
 
 @app.get("/api/tts/call")
 def get_tts_call(ticket_code: str, counter_name: str = "", service_name: str = "",
-                 voice: str = "pf_dora", speed: float = 0.85, volume: float = 1.0):
+                 voice: str = "pf_dora", speed: float = 0.85, volume: float = 1.0,
+                 priority: str = "", announce_preferential: bool = False):
     """Gera (e cacheia) MP3 com anúncio de voz via Kokoro TTS."""
     if voice not in _TTS_VALID_VOICES:
         voice = "pf_dora"
@@ -1661,7 +1697,7 @@ def get_tts_call(ticket_code: str, counter_name: str = "", service_name: str = "
     volume = max(0.1, min(4.0, volume))
     cache_dir = _tts_cache_dir()
     os.makedirs(cache_dir, exist_ok=True)
-    text = _format_call_text(ticket_code, service_name, counter_name)
+    text = _format_call_text(ticket_code, service_name, counter_name, priority=priority, announce_preferential=announce_preferential)
     cache_key = hashlib.md5(f"{text}|{voice}|{speed:.2f}|{volume:.2f}".encode()).hexdigest()
     cache_file = os.path.join(cache_dir, f"{cache_key}.mp3")
     if not os.path.isfile(cache_file):
@@ -1674,7 +1710,7 @@ def get_tts_call(ticket_code: str, counter_name: str = "", service_name: str = "
             "volume_multiplier": volume,
         }).encode()
         try:
-            req = Request(_TTS_KOKORO_URL, data=payload, headers={"Content-Type": "application/json"})
+            req = UrllibRequest(_TTS_KOKORO_URL, data=payload, headers={"Content-Type": "application/json"})
             with urlopen(req, timeout=15) as resp:
                 audio_bytes = resp.read()
         except Exception as e:
@@ -1805,23 +1841,38 @@ def tenant_set_logo(payload_in: Dict[str, Any], authorization: Optional[str] = H
 
 
 @app.post("/auth/login")
-def auth_login(payload: Dict[str, Any]):
+def auth_login(payload: Dict[str, Any], request: Request):
+    _check_rate_limit(f"login:{request.client.host}", max_req=10)
     email = (payload.get("email") or "").strip().lower()
     password = payload.get("password") or ""
     if not email or not password:
         raise HTTPException(status_code=400, detail="email and password are required")
 
+    # Resolve tenant quando a requisição vem do dashboard/operador de um cliente (X-Tenant-Slug)
+    tenant_cpf_cnpj = resolve_tenant_cpf_cnpj(request)
+
     with db_conn() as conn:
         cur = conn.cursor(dictionary=True)
-        cur.execute(
-            """
-            SELECT id, tenant_cpf_cnpj, email, role, password_hash, active
-            FROM tenant_users
-            WHERE email = %s
-            LIMIT 1
-            """,
-            (email,),
-        )
+        if tenant_cpf_cnpj:
+            cur.execute(
+                """
+                SELECT id, tenant_cpf_cnpj, email, role, password_hash, active
+                FROM tenant_users
+                WHERE email = %s AND tenant_cpf_cnpj = %s
+                LIMIT 1
+                """,
+                (email, tenant_cpf_cnpj),
+            )
+        else:
+            cur.execute(
+                """
+                SELECT id, tenant_cpf_cnpj, email, role, password_hash, active
+                FROM tenant_users
+                WHERE email = %s
+                LIMIT 1
+                """,
+                (email,),
+            )
         u = cur.fetchone()
         if not u or not u.get("active"):
             raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -1841,10 +1892,14 @@ def auth_login(payload: Dict[str, Any]):
 def auth_me(authorization: Optional[str] = Header(default=None)):
     payload = require_jwt(authorization)
     user_id = payload.get("sub")
+    tenant_cpf_cnpj = tenant_from_jwt(payload)
     full_name = None
     with db_conn() as conn:
         cur = conn.cursor(dictionary=True)
-        cur.execute("SELECT full_name FROM tenant_users WHERE id = %s", (user_id,))
+        cur.execute(
+            "SELECT full_name FROM tenant_users WHERE id = %s AND tenant_cpf_cnpj = %s",
+            (user_id, tenant_cpf_cnpj),
+        )
         row = cur.fetchone()
         if row:
             full_name = row.get("full_name")
@@ -2293,7 +2348,7 @@ def get_tenant_tv_settings(authorization: Optional[str] = Header(default=None)):
     with db_conn() as conn:
         cur = conn.cursor(dictionary=True)
         cur.execute(
-            "SELECT tv_theme, tv_audio_enabled, tv_call_sound, tv_video_muted, tv_video_paused, tts_enabled, tts_voice, tts_speed, tts_volume FROM tenants WHERE cpf_cnpj = %s",
+            "SELECT tv_theme, tv_audio_enabled, tv_call_sound, tv_video_muted, tv_video_paused, tts_enabled, tts_voice, tts_speed, tts_volume, tv_announce_preferential FROM tenants WHERE cpf_cnpj = %s",
             (tenant_cpf_cnpj,),
         )
         row = cur.fetchone()
@@ -2309,6 +2364,7 @@ def get_tenant_tv_settings(authorization: Optional[str] = Header(default=None)):
             "tts_voice": (row.get("tts_voice") or "pf_dora").strip() or "pf_dora",
             "tts_speed": float(row.get("tts_speed") or 0.85),
             "tts_volume": float(row.get("tts_volume") or 1.0),
+            "tv_announce_preferential": bool(row.get("tv_announce_preferential", 0)),
         }
 
 
@@ -2329,6 +2385,7 @@ def set_tenant_tv_settings(payload_in: Dict[str, Any], authorization: Optional[s
     tts_volume = float(payload_in.get("tts_volume") or 1.0)
     tts_speed = max(0.25, min(4.0, tts_speed))
     tts_volume = max(0.1, min(4.0, tts_volume))
+    tv_announce_preferential = payload_in.get("tv_announce_preferential", False)
 
     if tv_theme not in ("dark", "light"):
         raise HTTPException(status_code=400, detail="tv_theme must be 'dark' or 'light'")
@@ -2349,10 +2406,10 @@ def set_tenant_tv_settings(payload_in: Dict[str, Any], authorization: Optional[s
         cur.execute(
             """UPDATE tenants
                SET tv_theme = %s, tv_audio_enabled = %s, tv_call_sound = %s, tv_video_muted = %s, tv_video_paused = %s,
-                   tts_enabled = %s, tts_voice = %s, tts_speed = %s, tts_volume = %s
+                   tts_enabled = %s, tts_voice = %s, tts_speed = %s, tts_volume = %s, tv_announce_preferential = %s
                WHERE cpf_cnpj = %s""",
             (tv_theme, 1 if tv_audio_enabled else 0, tv_call_sound, 1 if tv_video_muted else 0, 1 if tv_video_paused else 0,
-             1 if tts_enabled else 0, tts_voice, tts_speed, tts_volume, tenant_cpf_cnpj),
+             1 if tts_enabled else 0, tts_voice, tts_speed, tts_volume, 1 if tv_announce_preferential else 0, tenant_cpf_cnpj),
         )
     return {"ok": True}
 
@@ -2853,9 +2910,9 @@ h1{font-size:1.25rem;color:#666;}</style></head><body><h1>Senha não encontrada<
 
 
 @app.get("/totem/services")
-def totem_list_services():
+def totem_list_services(request: Request):
     # Public endpoint: totem is a public kiosk
-    tenant_cpf_cnpj = resolve_tenant_cpf_cnpj()
+    tenant_cpf_cnpj = resolve_tenant_cpf_cnpj(request)
     if not tenant_cpf_cnpj:
         raise HTTPException(status_code=400, detail="No active tenant")
     with db_conn() as conn:
@@ -2873,12 +2930,13 @@ def totem_list_services():
 
 
 @app.post("/totem/emit")
-def totem_emit(payload_in: Dict[str, Any]):
+def totem_emit(payload_in: Dict[str, Any], request: Request):
     # Public endpoint: totem is a public kiosk
+    _check_rate_limit(f"emit:{request.client.host}", max_req=15)
     service_id = (payload_in.get("service_id") or "").strip()
     if not service_id:
         raise HTTPException(status_code=400, detail="service_id is required")
-    tenant_cpf_cnpj = resolve_tenant_cpf_cnpj()
+    tenant_cpf_cnpj = resolve_tenant_cpf_cnpj(request)
     if not tenant_cpf_cnpj:
         raise HTTPException(status_code=400, detail="No active tenant")
 
@@ -3212,7 +3270,7 @@ def call_ticket(ticket_id: str, payload_in: Dict[str, Any], authorization: Optio
             (event_id, event_type, json.dumps(event_payload, ensure_ascii=False), now),
         )
 
-    _prefetch_tts(tenant_cpf_cnpj, ticket["ticket_code"], ticket["service_name"] or "", counter["name"])
+    _prefetch_tts(tenant_cpf_cnpj, ticket["ticket_code"], ticket["service_name"] or "", counter["name"], priority=ticket.get("priority", ""))
     return {"ok": True, "ticket_id": ticket_id, "status": "called", "counter_name": counter["name"], "is_recall": is_recall}
 
 
@@ -3800,6 +3858,323 @@ def tv_events(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# OWNER — painel de administração da plataforma (Bruno / Innersoft)
+# Protegido por JWT com role="owner", emitido em /owner/login via OWNER_EMAIL
+# ═══════════════════════════════════════════════════════════════════════════
+
+def require_owner_jwt(auth_header: Optional[str]) -> Dict[str, Any]:
+    payload = require_jwt(auth_header)
+    if payload.get("role") != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+    return payload
+
+
+@app.post("/owner/login")
+def owner_login(payload_in: Dict[str, Any], request: Request):
+    _check_rate_limit(f"owner_login:{request.client.host}", max_req=5)
+    if not OWNER_EMAIL or not OWNER_PASSWORD_HASH:
+        raise HTTPException(status_code=503, detail="Owner credentials not configured")
+    email = (payload_in.get("email") or "").strip().lower()
+    password = payload_in.get("password") or ""
+    if email != OWNER_EMAIL.strip().lower():
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not verify_password(password, OWNER_PASSWORD_HASH):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    token = create_access_token(
+        sub="owner",
+        tenant_cpf_cnpj="",
+        role="owner",
+        email=OWNER_EMAIL,
+    )
+    return {"access_token": token, "token_type": "bearer"}
+
+
+@app.get("/owner/me")
+def owner_me(authorization: Optional[str] = Header(default=None)):
+    payload = require_owner_jwt(authorization)
+    return {"email": payload.get("email"), "role": "owner"}
+
+
+@app.get("/owner/tenants")
+def owner_list_tenants(authorization: Optional[str] = Header(default=None)):
+    require_owner_jwt(authorization)
+    with db_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            """
+            SELECT t.cpf_cnpj, t.slug, t.nome_razao_social, t.nome_fantasia,
+                   t.situacao, t.created_at,
+                   (SELECT COUNT(*) FROM tenant_users u WHERE u.tenant_cpf_cnpj = t.cpf_cnpj AND u.active = 1) AS active_users,
+                   (SELECT COUNT(*) FROM tickets tk WHERE tk.tenant_cpf_cnpj = t.cpf_cnpj AND DATE(tk.created_at) = CURDATE()) AS tickets_today,
+                   (SELECT COUNT(*) FROM ticket_print_jobs pj WHERE pj.tenant_cpf_cnpj = t.cpf_cnpj AND pj.status = 'pending') AS print_jobs_pending
+            FROM tenants t
+            ORDER BY t.created_at ASC
+            """
+        )
+        tenants = cur.fetchall()
+    for t in tenants:
+        if t.get("created_at"):
+            t["created_at"] = t["created_at"].isoformat()
+    return tenants
+
+
+@app.post("/owner/tenants")
+def owner_create_tenant(payload_in: Dict[str, Any], authorization: Optional[str] = Header(default=None)):
+    require_owner_jwt(authorization)
+    cnpj = (payload_in.get("cnpj") or "").strip()
+    slug = (payload_in.get("slug") or "").strip().lower()
+    nome = (payload_in.get("nome_razao_social") or "").strip()
+    fantasia = (payload_in.get("nome_fantasia") or nome).strip()
+    admin_email = (payload_in.get("admin_email") or "").strip().lower()
+    admin_password = payload_in.get("admin_password") or ""
+    admin_name = (payload_in.get("admin_name") or "Administrador").strip()
+
+    if not all([cnpj, slug, nome, admin_email, admin_password]):
+        raise HTTPException(status_code=400, detail="cnpj, slug, nome_razao_social, admin_email e admin_password são obrigatórios")
+
+    with db_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT cpf_cnpj FROM tenants WHERE cpf_cnpj = %s OR slug = %s", (cnpj, slug))
+        if cur.fetchone():
+            raise HTTPException(status_code=409, detail="CNPJ ou slug já cadastrado")
+
+        # Criar tenant
+        cur.execute(
+            "INSERT INTO tenants (cpf_cnpj, slug, nome_razao_social, nome_fantasia, situacao) VALUES (%s, %s, %s, %s, 'ativo')",
+            (cnpj, slug, nome, fantasia),
+        )
+
+        # Criar usuário admin
+        user_id = str(uuid.uuid4())
+        pw_hash = hash_password(admin_password)
+        cur.execute(
+            "INSERT INTO tenant_users (id, tenant_cpf_cnpj, email, full_name, role, password_hash, active) VALUES (%s, %s, %s, %s, 'admin', %s, 1)",
+            (user_id, cnpj, admin_email, admin_name, pw_hash),
+        )
+
+        # Criar serviço padrão
+        svc_id = str(uuid.uuid4())
+        cur.execute(
+            "INSERT INTO services (id, tenant_cpf_cnpj, name, ticket_prefix, priority_mode, active) VALUES (%s, %s, 'Atendimento Geral', 'A', 'normal', 1)",
+            (svc_id, cnpj),
+        )
+
+        # Criar guichê padrão
+        counter_id = str(uuid.uuid4())
+        cur.execute(
+            "INSERT INTO counters (id, tenant_cpf_cnpj, name, active) VALUES (%s, %s, 'Guichê 1', 1)",
+            (counter_id, cnpj),
+        )
+
+        # Gerar print_agent_token
+        agent_token = str(uuid.uuid4())
+        cur.execute(
+            "UPDATE tenants SET print_agent_token = %s WHERE cpf_cnpj = %s",
+            (agent_token, cnpj),
+        )
+
+    return {"ok": True, "cnpj": cnpj, "slug": slug}
+
+
+@app.get("/owner/tenants/{cnpj}")
+def owner_get_tenant(cnpj: str, authorization: Optional[str] = Header(default=None)):
+    require_owner_jwt(authorization)
+    with db_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            """
+            SELECT cpf_cnpj, slug, nome_razao_social, nome_fantasia, situacao, created_at,
+                   printer_enabled, printer_ip, printer_port, tts_enabled, tv_theme
+            FROM tenants WHERE cpf_cnpj = %s
+            """,
+            (cnpj,),
+        )
+        t = cur.fetchone()
+        if not t:
+            raise HTTPException(status_code=404, detail="Tenant not found")
+        if t.get("created_at"):
+            t["created_at"] = t["created_at"].isoformat()
+    return t
+
+
+@app.put("/owner/tenants/{cnpj}")
+def owner_update_tenant(cnpj: str, payload_in: Dict[str, Any], authorization: Optional[str] = Header(default=None)):
+    require_owner_jwt(authorization)
+    nome = (payload_in.get("nome_razao_social") or "").strip()
+    fantasia = (payload_in.get("nome_fantasia") or "").strip()
+    slug = (payload_in.get("slug") or "").strip().lower()
+    situacao = (payload_in.get("situacao") or "").strip()
+    if situacao not in ("ativo", "inativo"):
+        raise HTTPException(status_code=400, detail="situacao deve ser 'ativo' ou 'inativo'")
+    with db_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE tenants SET nome_razao_social=%s, nome_fantasia=%s, slug=%s, situacao=%s WHERE cpf_cnpj=%s",
+            (nome, fantasia, slug, situacao, cnpj),
+        )
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Tenant not found")
+    return {"ok": True}
+
+
+@app.delete("/owner/tenants/{cnpj}")
+def owner_deactivate_tenant(cnpj: str, authorization: Optional[str] = Header(default=None)):
+    require_owner_jwt(authorization)
+    with db_conn() as conn:
+        cur = conn.cursor()
+        cur.execute("UPDATE tenants SET situacao='inativo' WHERE cpf_cnpj=%s", (cnpj,))
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Tenant not found")
+    return {"ok": True}
+
+
+@app.post("/owner/tenants/{cnpj}/reset-admin-password")
+def owner_reset_admin_password(cnpj: str, payload_in: Dict[str, Any], authorization: Optional[str] = Header(default=None)):
+    """Redefine a senha do usuário admin do tenant. Fonte única de verdade para credenciais."""
+    require_owner_jwt(authorization)
+    new_password = (payload_in.get("new_password") or "").strip()
+    if len(new_password) < 4:
+        raise HTTPException(status_code=400, detail="A senha deve ter pelo menos 4 caracteres (letras e/ou números)")
+    with db_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT cpf_cnpj FROM tenants WHERE cpf_cnpj = %s", (cnpj,))
+        if not cur.fetchone():
+            raise HTTPException(status_code=404, detail="Tenant não encontrado")
+        pw_hash = hash_password(new_password)
+        cur.execute(
+            "UPDATE tenant_users SET password_hash = %s WHERE tenant_cpf_cnpj = %s AND role = 'admin'",
+            (pw_hash, cnpj),
+        )
+        updated = cur.rowcount
+    if updated == 0:
+        raise HTTPException(status_code=404, detail="Usuário admin não encontrado para este tenant")
+    return {"ok": True, "updated": updated}
+
+
+@app.get("/owner/tenants/{cnpj}/stats")
+def owner_tenant_stats(cnpj: str, authorization: Optional[str] = Header(default=None)):
+    require_owner_jwt(authorization)
+    with db_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        # Verifica se o tenant existe
+        cur.execute("SELECT cpf_cnpj, nome_fantasia, nome_razao_social FROM tenants WHERE cpf_cnpj = %s", (cnpj,))
+        t = cur.fetchone()
+        if not t:
+            raise HTTPException(status_code=404, detail="Tenant not found")
+
+        cur.execute("SELECT COUNT(*) AS cnt FROM tickets WHERE tenant_cpf_cnpj = %s AND DATE(created_at) = CURDATE()", (cnpj,))
+        tickets_today = (cur.fetchone() or {}).get("cnt", 0)
+
+        cur.execute("SELECT COUNT(*) AS cnt FROM tickets WHERE tenant_cpf_cnpj = %s AND created_at >= NOW() - INTERVAL 7 DAY", (cnpj,))
+        tickets_week = (cur.fetchone() or {}).get("cnt", 0)
+
+        cur.execute("SELECT COUNT(*) AS cnt FROM tenant_users WHERE tenant_cpf_cnpj = %s AND active = 1", (cnpj,))
+        active_users = (cur.fetchone() or {}).get("cnt", 0)
+
+        cur.execute("SELECT COUNT(*) AS cnt FROM ticket_print_jobs WHERE tenant_cpf_cnpj = %s AND status = 'pending'", (cnpj,))
+        print_pending = (cur.fetchone() or {}).get("cnt", 0)
+
+        cur.execute("SELECT COUNT(*) AS cnt FROM ticket_print_jobs WHERE tenant_cpf_cnpj = %s AND status = 'printed' AND DATE(printed_at) = CURDATE()", (cnpj,))
+        print_today = (cur.fetchone() or {}).get("cnt", 0)
+
+    return {
+        "cnpj": cnpj,
+        "nome": t.get("nome_fantasia") or t.get("nome_razao_social"),
+        "tickets_today": tickets_today,
+        "tickets_week": tickets_week,
+        "active_users": active_users,
+        "print_pending": print_pending,
+        "print_today": print_today,
+    }
+
+
+@app.get("/owner/stats")
+def owner_stats(authorization: Optional[str] = Header(default=None)):
+    require_owner_jwt(authorization)
+    with db_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT COUNT(*) AS cnt FROM tenants WHERE situacao = 'ativo'")
+        active_tenants = (cur.fetchone() or {}).get("cnt", 0)
+        cur.execute("SELECT COUNT(*) AS cnt FROM tenants")
+        total_tenants = (cur.fetchone() or {}).get("cnt", 0)
+        cur.execute("SELECT COUNT(*) AS cnt FROM tickets WHERE DATE(created_at) = CURDATE()")
+        tickets_today = (cur.fetchone() or {}).get("cnt", 0)
+        cur.execute("SELECT COUNT(*) AS cnt FROM tickets WHERE created_at >= NOW() - INTERVAL 7 DAY")
+        tickets_week = (cur.fetchone() or {}).get("cnt", 0)
+        cur.execute("SELECT COUNT(*) AS cnt FROM ticket_print_jobs WHERE status = 'pending'")
+        print_pending = (cur.fetchone() or {}).get("cnt", 0)
+    return {
+        "active_tenants": active_tenants,
+        "total_tenants": total_tenants,
+        "tickets_today": tickets_today,
+        "tickets_week": tickets_week,
+        "print_pending": print_pending,
+    }
+
+
+@app.get("/owner/health")
+def owner_health(authorization: Optional[str] = Header(default=None)):
+    require_owner_jwt(authorization)
+    result: Dict[str, Any] = {}
+
+    # Kokoro TTS
+    kokoro_url = os.getenv("KOKORO_TTS_URL", "")
+    kokoro_ok = False
+    if kokoro_url:
+        try:
+            host_part = kokoro_url.split("//")[-1].split("/")[0]
+            h, p = (host_part.split(":") + ["80"])[:2]
+            s = socket.create_connection((h, int(p)), timeout=3)
+            s.close()
+            kokoro_ok = True
+        except Exception:
+            kokoro_ok = False
+    result["kokoro_tts"] = {"ok": kokoro_ok, "url": kokoro_url}
+
+    # MariaDB
+    db_ok = False
+    try:
+        with db_conn() as conn:
+            cur = conn.cursor()
+            cur.execute("SELECT 1")
+            db_ok = True
+    except Exception:
+        db_ok = False
+    result["database"] = {"ok": db_ok}
+
+    return result
+
+
+@app.post("/owner/migrate")
+def owner_migrate(reset: bool = Query(default=False), authorization: Optional[str] = Header(default=None)):
+    require_owner_jwt(authorization)
+    return run_migrations(reset=reset)
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# FASE 5 — Cleanup periódico de print jobs expirados
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _cleanup_stale_print_jobs() -> None:
+    """Marca como 'failed' jobs pending com mais de 24h. Roda a cada hora."""
+    while True:
+        time.sleep(3600)
+        try:
+            with db_conn() as conn:
+                cur = conn.cursor()
+                cur.execute(
+                    "UPDATE ticket_print_jobs SET status='failed', error_msg='Timeout: job expirado após 24h' "
+                    "WHERE status='pending' AND created_at < NOW() - INTERVAL 24 HOUR"
+                )
+                conn.commit()
+        except Exception as e:
+            print(f"[cleanup_print_jobs] erro: {e}")
+
+
+threading.Thread(target=_cleanup_stale_print_jobs, daemon=True, name="cleanup-print-jobs").start()
 
 
 if __name__ == "__main__":

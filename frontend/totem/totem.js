@@ -114,17 +114,24 @@ async function loadTenantBranding() {
     const t = data?.tenant || {};
     const name = (t.nome_fantasia || t.nome_razao_social || "").toString();
 
+    // Valida que o slug da API bate com o NAV_BASE esperado (e.g. "/chama-ja/fcosta-gus" → "fcosta-gus")
+    const navBase = (window.NAV_BASE || "").replace(/\/$/, "");
+    const expectedSlug = navBase.split("/").filter(Boolean).pop() || "";
+    const apiSlug = t.slug || "";
+    if (expectedSlug && apiSlug && expectedSlug !== apiSlug) {
+      setStatus(`⚠️ Tenant incorreto: esperado "${expectedSlug}", obtido "${apiSlug}"`);
+      console.error(`Totem tenant mismatch: expected "${expectedSlug}", got "${apiSlug}"`);
+      return;
+    }
+
     const logoEl = document.getElementById("tenantLogo");
     const logoWrap = document.getElementById("logoWrap");
     const nameEl = document.getElementById("tenantName");
     const subtitleEl = document.getElementById("tenantSubtitle");
     const nameWrap = document.getElementById("tenantNameWrap");
 
-    // Logo estático SVG tem prioridade; fallback para base64 da API; fallback para nome texto
-    if (logoEl && logoEl.src && logoEl.getAttribute("src")) {
-      // Logo já definido no HTML (src estático) — apenas garante visibilidade
-      if (logoWrap) { logoWrap.classList.remove("d-none"); logoWrap.classList.add("d-flex"); }
-    } else if (logoEl && logoWrap && t.logo_base64 && typeof t.logo_base64 === "string") {
+    // API tem prioridade para logo (fonte única de verdade = painel admin)
+    if (logoEl && logoWrap && t.logo_base64 && typeof t.logo_base64 === "string" && t.logo_base64.trim().length > 5) {
       const v = t.logo_base64.trim();
       logoEl.src = v.startsWith("data:") ? v : `data:image/svg+xml;base64,${v}`;
       logoWrap.classList.remove("d-none");
@@ -136,7 +143,7 @@ async function loadTenantBranding() {
       nameWrap.classList.add("d-flex");
     }
   } catch {
-    // Ignore branding failures
+    // Ignore branding failures (offline, etc.)
   }
 }
 
@@ -156,8 +163,9 @@ function createServiceCard(svc) {
     <div class="service-icon">
       <span class="material-icons">${escapeHtml(icon)}</span>
     </div>
-    <div class="service-name">${escapeHtml(svc.name)}</div>
-    <div class="service-subtitle">${escapeHtml(subtitle)}</div>
+    <div class="service-content">
+      <div class="service-name">${escapeHtml(svc.name)}</div>
+    </div>
   `;
 
   btn.addEventListener("click", () => emitTicket(svc));

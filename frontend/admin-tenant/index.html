@@ -1669,10 +1669,16 @@
               </div>
               <div class="col-12 col-md-6">
                 <label class="form-label fw-semibold">Prioridade</label>
-                <select id="sPriority" class="form-select scart-input">
-                  <option value="normal">Normal</option>
-                  <option value="preferential">Preferencial</option>
-                </select>
+                <div class="d-flex gap-3 pt-1">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="sPrioNormal" checked>
+                    <label class="form-check-label" for="sPrioNormal">Normal</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="sPrioPreferential">
+                    <label class="form-check-label" for="sPrioPreferential">Preferencial</label>
+                  </div>
+                </div>
               </div>
               <div class="col-12">
                 <div class="form-check form-switch">
@@ -2854,24 +2860,27 @@
 
       document.getElementById("btnOpenServiceModal").addEventListener("click", () => {
         document.getElementById("sName").value = "";
-        document.getElementById("sPriority").value = "normal";
+        document.getElementById("sPrioNormal").checked = true;
+        document.getElementById("sPrioPreferential").checked = false;
         document.getElementById("sActive").checked = true;
         serviceModal.show();
       });
       document.getElementById("btnSaveService").addEventListener("click", async () => {
-        const payload = {
-          name: document.getElementById("sName").value,
-          priority_mode: document.getElementById("sPriority").value,
-          active: Boolean(document.getElementById("sActive").checked),
-        };
-        if (!String(payload.name || "").trim()) {
-          swalErr("Serviço", "Informe o nome.");
-          return;
+        const name = String(document.getElementById("sName").value || "").trim();
+        const normal = document.getElementById("sPrioNormal").checked;
+        const preferential = document.getElementById("sPrioPreferential").checked;
+        const active = Boolean(document.getElementById("sActive").checked);
+        if (!name) { swalErr("Serviço", "Informe o nome."); return; }
+        if (!normal && !preferential) { swalErr("Serviço", "Selecione ao menos uma prioridade."); return; }
+        const modes = [];
+        if (normal) modes.push("normal");
+        if (preferential) modes.push("preferential");
+        for (const mode of modes) {
+          await api("/tenant/services", { method: "POST", headers: authHeaders(), body: JSON.stringify({ name, priority_mode: mode, active }) });
         }
-        await api("/tenant/services", { method: "POST", headers: authHeaders(), body: JSON.stringify(payload) });
         serviceModal.hide();
         await refreshServices();
-        swalOk("Serviço criado", "Serviço cadastrado.");
+        swalOk("Serviço criado", modes.length === 2 ? "Dois serviços cadastrados." : "Serviço cadastrado.");
       });
 
       // Announcements modal (SCart-style)

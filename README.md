@@ -1,14 +1,99 @@
-# Chama Já (Sistema de Senhas SaaS Multi-Tenant)
+# Chama Já — Sistema de Senhas SaaS Multi-Tenant
 
-Sistema completo de gerenciamento de senhas e chamadas para atendimento, com painel administrativo, interface do operador e monitor TV.
+Sistema completo de gerenciamento de senhas e chamadas para atendimento, com painel administrativo, interface do operador, monitor TV e totem de emissão.
 
 **Repositório:** https://github.com/InnersoftTecnologia/chama-ja
+**Empresa:** Innersoft Tecnologia
+**Primeiro cliente:** Ferreira Costa (slug `fcosta-gus`)
 
-## Página principal (dashboard)
+---
 
-**http://localhost:7077** — Painel com links para abrir cada interface em nova aba (TV, Operador, Admin, Totem, etc.), com tema dark/light.
+## Arquitetura de produção
 
-## Instalação rápida
+```
+Usuário → HTTPS → nginx (innersoft.com.br) → frontend estático
+                                            → /chama-ja/<slug>/api/ → FastAPI :7071
+```
+
+### URLs públicas (produção)
+
+| Interface | URL |
+|-----------|-----|
+| Dashboard | `https://innersoft.com.br/chama-ja/fcosta-gus/` |
+| TV / Painel | `https://innersoft.com.br/chama-ja/fcosta-gus/tv/` |
+| Operador | `https://innersoft.com.br/chama-ja/fcosta-gus/op/` |
+| Admin Tenant | `https://innersoft.com.br/chama-ja/fcosta-gus/admin/` |
+| Totem | `https://innersoft.com.br/chama-ja/fcosta-gus/totem/` |
+| API | `https://innersoft.com.br/chama-ja/fcosta-gus/api/` |
+| Landing Innersoft | `https://innersoft.com.br/` |
+
+### Infraestrutura
+
+| Serviço | Host | Detalhe |
+|---------|------|---------|
+| Backend FastAPI | 165.232.140.143 | porta 7071, systemd `chama-ja.service` |
+| Nginx | 165.232.140.143 | proxy reverso + arquivos estáticos |
+| Kokoro TTS | 147.79.86.7 | Docker `kokoro-tts`, porta 8880 |
+| Banco | localhost (VPS) | MariaDB, banco `chamador` |
+
+---
+
+## Stack
+
+- **Backend:** Python 3.12 + FastAPI + MariaDB (`mysql-connector-python`)
+- **Frontend:** HTML/CSS Vanilla + Bootstrap 5 (admin/operador/totem) + CSS próprio (TV)
+- **Auth:** JWT (PyJWT + bcrypt) para rotas de operador/admin
+- **Sem frameworks JS** — vanilla fetch + SSE
+- **TTS:** Kokoro (Docker) — vozes BR: `pf_dora` (fem.) e `pm_alex` (masc.)
+
+---
+
+## Funcionalidades
+
+### TV (`/tv/`)
+- Exibição de senha atual em atendimento + histórico
+- Fila de espera em tempo real (polling 3s)
+- Player YouTube com playlist configurável (vídeos e slides)
+- Ticker de avisos no rodapé
+- **Anúncio de voz TTS**: campainha + voz sintetizada ao chamar senha
+- Tema dark/light configurável remotamente
+- Overlay "Toque para ativar áudio" (auto-dismiss em kiosks configurados)
+- SSE para chamadas em tempo real (`ticket.called`, `ticket.recalled`)
+
+### Operador (`/op/`)
+- Login JWT + seleção de guichê
+- Fila em duas colunas: Preferencial | Normal
+- Filtro por serviço: operador vê apenas os serviços que lhe foram atribuídos (sem atribuição = vê todos)
+- Chamar próxima / chamar senha específica / rechamar / iniciar / finalizar / não compareceu / cancelar
+
+### Admin Tenant (`/admin/`)
+- Métricas: guichês, serviços, operadores, atendimentos
+- Branding: upload de logo do tenant
+- CRUD de operadores com atribuição de serviços por operador
+- CRUD de guichês e serviços (prioridade Normal e/ou Preferencial por checkboxes)
+- Configurações da TV: tema, áudio, TTS (voz/velocidade/volume), controle remoto YouTube
+- Playlist: vídeos YouTube (metadados automáticos) e slides/imagens
+- Avisos do rodapé (ticker)
+
+### Totem (`/totem/`)
+- Tela touch com botões grandes por serviço (público, sem auth)
+- Emite tickets na fila e registra `ticket_print_jobs`
+- Suporte a impressora térmica ESC/POS via TCP
+
+### Dashboard (`/`)
+- Painel do tenant com links para TV, Operador, Admin e Totem
+- Cards com QR code de acesso para o Totem
+
+---
+
+## Desenvolvimento local
+
+### 1. Pré-requisitos
+
+- Python 3.12+
+- MariaDB local rodando
+
+### 2. Instalação
 
 ```bash
 git clone https://github.com/InnersoftTecnologia/chama-ja.git
@@ -16,186 +101,113 @@ cd chama-ja
 ./install.sh
 ```
 
-O script `install.sh` cria a estrutura de diretórios (`.run/prints`, `.run/slides`), ambiente virtual Python e instala as dependências. Com um argumento, instala em outro diretório: `./install.sh /caminho/destino`.
+### 3. Variáveis de ambiente
 
-## Controle de versão
+Crie `.env` na raiz do projeto:
 
-- A versão fica no arquivo **`.version`** (formato `major.minor.patch`).
-- A cada **commit**, o hook **pre-commit** incrementa automaticamente o patch.
-- Após clonar, instale os hooks: `./scripts/setup-git-hooks.sh`.
-
-### Enviar para o GitHub
-
-```bash
-./scripts/setup-git-hooks.sh   # instala hook de .version
-git add .
-git commit -m "Versão inicial"
-git push -u origin main
+```env
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=mysql
+DB_PASSWORD=mysql
+DB_NAME=chamador
+EDGE_DEVICE_TOKEN=dev-edge-token
+KOKORO_TTS_URL=http://localhost:8880/v1/audio/speech
 ```
 
-A pasta `docs/` não é versionada (está no `.gitignore`).
-
-## Portas (7070–7079)
-
-| Porta | Serviço | Descrição |
-|-------|---------|-----------|
-| 7077 | **Dashboard** | Página principal — links para todas as interfaces |
-| 7071 | Edge API | Backend FastAPI |
-| 7072 | Test UI | Interface de teste (legado) |
-| 7073 | TV | Monitor/Painel de chamadas |
-| 7074 | Operador | Interface do operador |
-| 7075 | Admin Tenant | Portal de administração |
-| 7076 | Totem | Emissão de senhas (touch) |
-
-## Funcionalidades
-
-### Admin Tenant (http://localhost:7075)
-- **Dashboard**: Métricas de guichês, serviços, operadores, atendimentos
-- **Branding**: Upload de logo do tenant
-- **Operadores**: CRUD de usuários com ativar/desativar
-- **Guichês**: CRUD de guichês com ativar/desativar
-- **Serviços**: CRUD de serviços com prioridade normal/preferencial
-- **Painel do Chamador**: Configurações da TV
-  - Tema Dark/Light
-  - Áudio de chamada (beep/mp3 configurável)
-  - **Anúncio de voz TTS** (Kokoro) — anuncia a senha em português após a campainha; voz configurável (Dora, Alex, Santa), com sliders de velocidade (0.25×–2.0×) e volume (0.5×–2.0×); botão "Testar" reproduz amostra no navegador
-  - Controle remoto do vídeo YouTube (mute/play/pause)
-  - Avisos do rodapé (ticker)
-  - Playlist de vídeos e slides (CRUD com metadados)
-    - Vídeos do YouTube (com busca automática de título/thumbnail)
-    - Slides/Imagens estáticas (upload ou URL externa, duração configurável)
-
-### TV (http://localhost:7073)
-- Exibição de senhas em atendimento (tickets `in_service`)
-- Histórico (tickets finalizados: `completed/no_show/cancelled`)
-- Player YouTube com playlist configurável (vídeos e slides)
-- Slides/Imagens estáticas com duração configurável
-- Transição automática entre vídeos e slides
-- Ticker de avisos no rodapé
-- Tema dark/light configurável remotamente
-- Áudio e vídeo controláveis remotamente
-- **Anúncio de voz TTS**: ao chamar uma senha, toca a campainha e em seguida anuncia em voz sintetizada (ex.: "Atenção! Senha A zero três quatro. Dirija-se ao Guichê cinco.") via Kokoro TTS (porta 8880), com cache em disco
-
-### Operador (http://localhost:7074)
-- Login com JWT
-- Seleção de guichê no login (fixo até sair)
-- Fila em duas colunas (Preferencial | Normal)
-- Chamar próxima senha + iniciar/finalizar/não compareceu/cancelar
-
-### Totem (http://localhost:7076)
-- Tela touch (tablet/celular) com botões grandes por serviço
-- Layout em 2 colunas (Normal | Preferencial) baseado no modelo
-- Cards com bordas laterais coloridas (azul/laranja)
-- Fonte Montserrat aplicada em todo o Totem
-- Lista serviços do tenant ativo e emite tickets na fila
-- "Impressão" MVP: download de `.txt` + salvar arquivo em `.run/prints/`
-- Auditoria em banco: tabela `ticket_print_jobs`
-
-## Credenciais de Teste
-- **Admin**: admin@ferreiracosta.com.br / admin123
-- **Operador**: amanda@ferreiracosta.com.br / amanda123
-
-## Banco (MariaDB local)
-
-Você informou que já existe MariaDB local:
+### 4. Subir o backend
 
 ```bash
-mysql -u mysql -pmysql localhost
-```
-
-## Rodar (dev)
-
-### 1) Instalar deps
-
-```bash
-cd /home/cbruno/projetos/chama-ja
-python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-### 2) Subir Edge API (7071)
-
-```bash
-export DB_HOST=localhost
-export DB_PORT=3306
-export DB_USER=mysql
-export DB_PASSWORD=mysql
-export DB_NAME=chamador
-export EDGE_DEVICE_TOKEN=dev-edge-token
-
 python backend/edge/app.py
 ```
 
-### 3) Inicializar schema + seed
+### 5. Inicializar banco + seed
 
 ```bash
 curl -X POST 'http://localhost:7071/admin/migrate?reset=1' -H 'Authorization: Bearer dev-edge-token'
-curl -X POST http://localhost:7071/admin/seed -H 'Authorization: Bearer dev-edge-token'
+curl -X POST 'http://localhost:7071/admin/seed' -H 'Authorization: Bearer dev-edge-token'
 ```
 
-### 4) Servir os frontends (7070 e 7072)
-
-Em dois terminais:
+### 6. Servir frontends (dev)
 
 ```bash
-python3 -m http.server 7070 --directory /home/cbruno/projetos/chama-ja/frontend/tv
+# TV
+python3 -m http.server 7073 --directory frontend/tv
+
+# Operador
+python3 -m http.server 7074 --directory frontend/operator
+
+# Admin
+python3 -m http.server 7075 --directory frontend/admin-tenant
+
+# Totem
+python3 -m http.server 7076 --directory frontend/totem
 ```
 
-Se a 7070 estiver ocupada no seu host, use a 7073:
+Ou use `./gerenciar.sh start` para subir todos os serviços de uma vez.
+
+---
+
+## Credenciais de teste (seed)
+
+| Perfil | Email | Senha |
+|--------|-------|-------|
+| Admin | admin@ferreiracosta.com.br | admin123 |
+| Operador | amanda@ferreiracosta.com.br | amanda123 |
+
+---
+
+## Deploy na VPS
+
+Ver [`.claude/commands/deploy.md`](.claude/commands/deploy.md) para o fluxo completo.
 
 ```bash
-python3 -m http.server 7073 --directory /home/cbruno/projetos/chama-ja/frontend/tv
+# Restart backend
+echo 'cbruno22' | sudo -S systemctl restart chama-ja.service
+
+# Reload nginx
+echo 'cbruno22' | sudo -S nginx -t && echo 'cbruno22' | sudo -S systemctl reload nginx
 ```
 
-```bash
-python3 -m http.server 7072 --directory /home/cbruno/projetos/chama-ja/frontend/operator-test
-```
+---
 
-Abra:
+## TV em modo kiosk (produção)
 
-- TV: `http://localhost:7070/`
-- (fallback) TV: `http://localhost:7073/`
-- Teste: `http://localhost:7072/`
+Para eliminar a necessidade do clique de ativação de áudio, configure o Chrome na máquina da TV. Ver [`.claude/commands/tv-kiosk.md`](.claude/commands/tv-kiosk.md).
 
-Se estiver usando o `gerenciar.sh`, ele já sobe também:
-- Operador: `http://localhost:7074/`
-- Admin: `http://localhost:7075/`
-- Totem: `http://localhost:7076/`
+**Opção mais simples (uma vez):** `chrome://settings/content/sound` → adicionar `https://innersoft.com.br` em "Permitido reproduzir som".
+
+---
+
+## Controle de versão
+
+- Versão em **`.version`** (formato `major.minor.patch`)
+- Hook pre-commit incrementa o patch automaticamente
+- Instalar hooks: `./scripts/setup-git-hooks.sh`
+
+---
 
 ## Dependências externas
 
-- **Kokoro TTS** (porta 8880) — microserviço de síntese de voz em português BR rodando via Docker. Se offline, o sistema opera normalmente apenas com a campainha (falha silenciosa). O diretório do Kokoro pode estar em **qualquer caminho** do servidor.
+| Serviço | Detalhe |
+|---------|---------|
+| Kokoro TTS | Docker `kokoro-tts` em 147.79.86.7:8880. Se offline, opera só com campainha (falha silenciosa) |
+| MariaDB | Local na VPS, banco `chamador` |
+| YouTube IFrame API | Carregada dinamicamente pelo painel TV |
 
-### Gerenciando o Kokoro
-
-```bash
-# Subir o container Kokoro (padrão: <projeto>/kokoro/docker-compose.yml)
-./gerenciar.sh kokoro start
-
-# Para subir de outro caminho:
-export KOKORO_DIR=/opt/kokoro
-./gerenciar.sh kokoro start
-
-# Parar
-./gerenciar.sh kokoro stop
-
-# Verificar status
-./gerenciar.sh kokoro status
-```
-
-O status do Kokoro também aparece em `./gerenciar.sh status` e na verificação pós-`start`.
-
-### Variáveis de ambiente do Kokoro
+### Variáveis Kokoro
 
 | Variável | Padrão | Descrição |
 |----------|--------|-----------|
-| `KOKORO_DIR` | `<projeto>/kokoro` | Caminho do diretório com o `docker-compose.yml` |
-| `KOKORO_PORT` | `8880` | Porta em que o Kokoro escuta |
-| `KOKORO_TTS_URL` | `http://localhost:8880/v1/audio/speech` | URL completa usada pelo backend |
+| `KOKORO_TTS_URL` | `http://localhost:8880/v1/audio/speech` | URL do serviço TTS |
 
-## Notas
+---
 
-- SSE usa `?token=...` porque `EventSource` não consegue enviar header Authorization.
-- Cache de áudios TTS em `.run/tts_cache/` (MP3 por hash MD5 de texto+voz+speed+volume). Limpar com `./scripts/testar_voz.sh --limpar-cache` ou `rm -f .run/tts_cache/*.mp3`.
+## Notas técnicas
 
+- SSE (`/tv/events`) é público — `EventSource` não suporta headers, logo sem auth
+- Totem e TV são endpoints públicos (sem JWT) — kiosks sem login
+- Operadores por serviço: se `operator_services` está vazio para o operador, ele vê todas as filas
+- Cache de TTS em `.run/tts_cache/` (MP3 por hash MD5 de texto+voz+speed+volume)
+- Impressão térmica: tabela `ticket_print_jobs` + arquivo em `.run/prints/`

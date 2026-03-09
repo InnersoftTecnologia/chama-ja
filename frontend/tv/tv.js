@@ -421,13 +421,12 @@ function applyTenantBranding(tenant) {
   const logoEl = document.getElementById("tenantLogo");
   if (logoEl && tenant.logo_base64 && typeof tenant.logo_base64 === "string") {
     const v = tenant.logo_base64.trim();
-    // If it already includes data: prefix, keep it. Otherwise assume SVG base64.
     if (v.startsWith("data:")) {
       logoEl.src = v;
     } else {
-      // Backward compatibility (older seeds stored raw base64)
       logoEl.src = `data:image/svg+xml;base64,${v}`;
     }
+    logoEl.hidden = false;
   }
 
   // Apply TV theme
@@ -875,9 +874,8 @@ function initPlaylist(playlist) {
             applyVideoControls(state.lastTenant);
           }
 
-          // Show button immediately - user MUST interact to enable audio
-          console.log("Video is playing muted. User must click button to enable audio.");
-          showEnableAudioButton();
+          // Se o áudio ainda não foi desbloqueado, o overlay já está visível
+          if (!state.audioContextUnlocked) showAudioUnlockOverlay();
 
         } catch (err) {
           console.error("Error in onReady:", err);
@@ -930,7 +928,7 @@ function initPlaylist(playlist) {
             </div>
           `;
         }
-        showEnableAudioButton();
+        if (!state.audioContextUnlocked) showAudioUnlockOverlay();
       },
     },
   });
@@ -1226,13 +1224,60 @@ async function main() {
   renderPanel(); // garante header renderizado imediatamente
 }
 
-// One-tap audio enable (needed for some browsers)
-document.addEventListener("click", (ev) => {
+// ── Audio unlock ────────────────────────────────────────────────────────────
+// Browsers bloqueiam audio sem gesto do usuário. Tentamos desbloquear
+// automaticamente no load (funciona em kiosks configurados com autoplay).
+// Se falhar, overlay fullscreen fica visível até o primeiro toque na tela.
+
+function _doUnlockAudio() {
+  return new Promise((resolve) => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      ctx.resume().then(() => {
+        if (ctx.state === "running") {
+          const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
+          const src = ctx.createBufferSource();
+          src.buffer = buf;
+          src.connect(ctx.destination);
+          src.start(0);
+          state.audioContextUnlocked = true;
+          console.log("Audio desbloqueado");
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      }).catch(() => resolve(false));
+    } catch (e) {
+      resolve(false);
+    }
+  });
+}
+
+function showAudioUnlockOverlay() {
+  const el = document.getElementById("audioUnlockOverlay");
+  if (el) el.style.display = "flex";
+}
+
+function hideAudioUnlockOverlay() {
+  const el = document.getElementById("audioUnlockOverlay");
+  if (el) el.style.display = "none";
+}
+
+// Tenta desbloquear automaticamente (funciona se o browser/kiosk permite autoplay)
+_doUnlockAudio().then((ok) => { if (!ok) showAudioUnlockOverlay(); });
+
+// Qualquer toque no overlay ou no botão pequeno desbloqueia tudo e fecha
+document.addEventListener("click", async (ev) => {
   const t = ev.target;
-  if (t && t.id === "enableAudioBtn") {
-    tryEnableYouTubeAudio();
-    hideEnableAudioButton();
-  }
+  const overlay = document.getElementById("audioUnlockOverlay");
+  const hitOverlay = overlay && (overlay === t || overlay.contains(t));
+  const hitBtn = t && t.id === "enableAudioBtn";
+  if (!hitOverlay && !hitBtn) return;
+
+  await _doUnlockAudio();
+  hideAudioUnlockOverlay();
+  hideEnableAudioButton();
+  tryEnableYouTubeAudio();
 });
 
 // Debug function - call from console: debugYT()

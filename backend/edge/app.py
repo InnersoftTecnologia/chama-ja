@@ -631,8 +631,7 @@ def fetch_state() -> Dict[str, Any]:
 
 
 @app.get("/tv/state")
-def tv_state(authorization: Optional[str] = Header(default=None)):
-    require_token(authorization)
+def tv_state():
     return JSONResponse(fetch_state())
 
 
@@ -2649,8 +2648,8 @@ h1{font-size:1.25rem;color:#666;}</style></head><body><h1>Senha não encontrada<
 
 
 @app.get("/totem/services")
-def totem_list_services(authorization: Optional[str] = Header(default=None)):
-    require_token(authorization)
+def totem_list_services():
+    # Public endpoint: totem is a public kiosk
     tenant_cpf_cnpj = resolve_tenant_cpf_cnpj()
     if not tenant_cpf_cnpj:
         raise HTTPException(status_code=400, detail="No active tenant")
@@ -2669,8 +2668,8 @@ def totem_list_services(authorization: Optional[str] = Header(default=None)):
 
 
 @app.post("/totem/emit")
-def totem_emit(payload_in: Dict[str, Any], authorization: Optional[str] = Header(default=None)):
-    require_token(authorization)
+def totem_emit(payload_in: Dict[str, Any]):
+    # Public endpoint: totem is a public kiosk
     service_id = (payload_in.get("service_id") or "").strip()
     if not service_id:
         raise HTTPException(status_code=400, detail="service_id is required")
@@ -3509,16 +3508,10 @@ def sse_format(event_id: str, event_type: str, data: str) -> str:
 
 @app.get("/tv/events")
 def tv_events(
-    authorization: Optional[str] = Header(default=None),
     last_event_id: Optional[str] = Header(default=None, alias="Last-Event-ID"),
     token: Optional[str] = Query(default=None),
 ):
-    # EventSource can't send headers; allow ?token=... for MVP.
-    if token:
-        if token != DEVICE_TOKEN:
-            raise HTTPException(status_code=403, detail="Invalid token")
-    else:
-        require_token(authorization)
+    # Public endpoint: TV panel is a public display, no auth required.
 
     def gen() -> Generator[bytes, None, None]:
         # Simple long-poll loop that streams SSE events.

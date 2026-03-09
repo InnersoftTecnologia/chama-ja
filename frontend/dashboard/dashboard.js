@@ -137,22 +137,6 @@
       port: 7076,
       navPath: "/totem/",
     },
-    {
-      id: "test",
-      icon: "🧪",
-      title: "Test UI",
-      desc: "Interface de teste (legado).",
-      port: 7072,
-      navPath: "/test/",
-    },
-    {
-      id: "edge",
-      icon: "🔌",
-      title: "Edge API",
-      desc: "Backend — health e documentação.",
-      port: 7071,
-      navPath: "/api/health",
-    },
   ];
 
   function getTheme() {
@@ -210,20 +194,6 @@
       })
       .join("");
 
-    // Card especial de acompanhamento (não é link, abre modal)
-    const monitorCard = document.createElement("div");
-    monitorCard.className = "card card-monitor";
-    monitorCard.setAttribute("role", "button");
-    monitorCard.setAttribute("tabindex", "0");
-    monitorCard.innerHTML = `
-      <div class="card-icon">📊</div>
-      <h2 class="card-title">Acompanhamento</h2>
-      <p class="card-desc">Fila em tempo real — operadores atendendo, senhas aguardando.</p>
-      <span class="card-badge">ao vivo</span>
-    `;
-    monitorCard.addEventListener("click", openMonitor);
-    monitorCard.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") openMonitor(); });
-    container.appendChild(monitorCard);
   }
 
   function updateTotemQrFromApi() {

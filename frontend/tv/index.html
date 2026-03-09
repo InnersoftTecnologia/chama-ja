@@ -24,12 +24,10 @@
       >
         <div class="flex items-center gap-5">
           <div class="h-12" id="tenantLogoContainer">
-            <img src="./images/logo_fc.svg" alt="Logo" class="h-full w-auto" id="tenantLogo" />
+            <img src="" alt="Logo" class="h-full w-auto" id="tenantLogo" hidden />
           </div>
           <div>
-            <h1 class="text-2xl font-black tracking-tight uppercase" id="tenantName">
-              FERREIRA COSTA
-            </h1>
+            <h1 class="text-2xl font-black tracking-tight uppercase" id="tenantName"></h1>
             <p
               class="text-[10px] text-primary font-bold tracking-[0.3em] uppercase"
               id="tenantSubtitle"
@@ -173,6 +171,21 @@
           </p>
         </div>
       </div>
+    </div>
+
+    <!-- Overlay de ativação de áudio: cobre a tela inteira até o primeiro toque -->
+    <div
+      id="audioUnlockOverlay"
+      style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);
+             cursor:pointer;flex-direction:column;align-items:center;justify-content:center;gap:1.5rem;"
+    >
+      <span style="font-size:4rem;">🔊</span>
+      <p style="font-size:1.8rem;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:.1em;text-align:center;margin:0;">
+        Toque para ativar o áudio
+      </p>
+      <p style="font-size:1rem;color:rgba(255,255,255,0.5);margin:0;text-align:center;">
+        Necessário uma vez por sessão
+      </p>
     </div>
 
     <script src="./tv.js"></script>

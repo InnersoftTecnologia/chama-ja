@@ -62,27 +62,71 @@ Usuário → HTTPS → nginx (innersoft.com.br) → frontend estático
 
 ### Operador (`/op/`)
 - Login JWT + seleção de guichê
-- Fila em duas colunas: Preferencial | Normal
-- Filtro por serviço: operador vê apenas os serviços que lhe foram atribuídos (sem atribuição = vê todos)
+- Fila em lista compacta scrollável: Preferencial (badge âmbar) | Normal
+- Filtro por serviço: operador vê apenas os serviços que lhe foram atribuídos
 - Chamar próxima / chamar senha específica / rechamar / iniciar / finalizar / não compareceu / cancelar
 
 ### Admin Tenant (`/admin/`)
 - Métricas: guichês, serviços, operadores, atendimentos
 - Branding: upload de logo do tenant
 - CRUD de operadores com atribuição de serviços por operador
-- CRUD de guichês e serviços (prioridade Normal e/ou Preferencial por checkboxes)
+- CRUD de guichês e serviços (prioridade Normal e/ou Preferencial)
 - Configurações da TV: tema, áudio, TTS (voz/velocidade/volume), controle remoto YouTube
 - Playlist: vídeos YouTube (metadados automáticos) e slides/imagens
 - Avisos do rodapé (ticker)
+- **Impressora Térmica**: configurar IP/porta, habilitar, copiar token do print agent, testar impressão
 
 ### Totem (`/totem/`)
 - Tela touch com botões grandes por serviço (público, sem auth)
-- Emite tickets na fila e registra `ticket_print_jobs`
-- Suporte a impressora térmica ESC/POS via TCP
+- Emite tickets na fila
+- Ao emitir: gera bytes ESC/POS e enfileira job de impressão (`ticket_print_jobs`)
 
 ### Dashboard (`/`)
 - Painel do tenant com links para TV, Operador, Admin e Totem
 - Cards com QR code de acesso para o Totem
+
+---
+
+## Impressão Térmica — Print Agent
+
+A VPS está em nuvem e não enxerga a rede local do cliente. A impressão funciona via **polling reverso**:
+
+```
+[Totem] → emite ticket → [VPS: job pending em ticket_print_jobs]
+                                    ↑
+          [Print Agent — máquina na rede local do cliente]
+          polls HTTPS a cada 2s (saída, não entrada)
+                                    ↓
+          [Impressora TCP RAW 192.168.1.100:9100]
+```
+
+### Scripts zero-install (sem instalação)
+
+| Script | Sistema | Como executar |
+|--------|---------|--------------|
+| `deploy/print-agent/print-agent.py` | **Linux / Rocky Linux 8** | `python3 print-agent.py` |
+| `deploy/print-agent/print-agent.ps1` | **Windows 10+** | `powershell -ExecutionPolicy Bypass -File .\print-agent.ps1` |
+
+Ambos usam apenas recursos nativos do sistema — sem pip, sem instalação.
+
+### Configuração (uma vez)
+
+1. No Admin Tenant → aba "Painel do Chamador" → seção **Impressora Térmica**
+2. Informar IP e porta da impressora, habilitar impressão, copiar o **Token do Print Agent**
+3. Colar o token na variável `TOKEN` do script correspondente
+4. Executar o script na máquina da rede local do cliente
+5. Clicar **Testar Impressão** para validar o fluxo completo
+
+### Endpoints da API
+
+| Endpoint | Auth | Descrição |
+|----------|------|-----------|
+| `GET /tenant/printer-settings` | JWT admin | Lê configurações + token |
+| `POST /tenant/printer-settings` | JWT admin | Salva IP, porta, habilitado |
+| `POST /tenant/printer-settings/rotate-token` | JWT admin | Gera novo token |
+| `POST /tenant/printer-settings/test-print` | JWT admin | Enfileira job de teste |
+| `GET /print-agent/jobs` | print_agent_token | Jobs pendentes (para o script) |
+| `POST /print-agent/jobs/{id}/ack` | print_agent_token | Confirma printed/failed |
 
 ---
 
@@ -132,16 +176,9 @@ curl -X POST 'http://localhost:7071/admin/seed' -H 'Authorization: Bearer dev-ed
 ### 6. Servir frontends (dev)
 
 ```bash
-# TV
 python3 -m http.server 7073 --directory frontend/tv
-
-# Operador
 python3 -m http.server 7074 --directory frontend/operator
-
-# Admin
 python3 -m http.server 7075 --directory frontend/admin-tenant
-
-# Totem
 python3 -m http.server 7076 --directory frontend/totem
 ```
 
@@ -163,7 +200,8 @@ Ou use `./gerenciar.sh start` para subir todos os serviços de uma vez.
 Ver [`.claude/commands/deploy.md`](.claude/commands/deploy.md) para o fluxo completo.
 
 ```bash
-# Restart backend
+# Sync arquivo e reiniciar backend
+rsync -avz -e "ssh -i ~/.ssh/id_ed25519_vps" arquivo.py cbruno@165.232.140.143:/home/bruno/chama-ja/...
 echo 'cbruno22' | sudo -S systemctl restart chama-ja.service
 
 # Reload nginx
@@ -210,4 +248,5 @@ Para eliminar a necessidade do clique de ativação de áudio, configure o Chrom
 - Totem e TV são endpoints públicos (sem JWT) — kiosks sem login
 - Operadores por serviço: se `operator_services` está vazio para o operador, ele vê todas as filas
 - Cache de TTS em `.run/tts_cache/` (MP3 por hash MD5 de texto+voz+speed+volume)
-- Impressão térmica: tabela `ticket_print_jobs` + arquivo em `.run/prints/`
+- **TTS**: o botão "Testar TTS" no admin funciona mesmo com `tts_enabled=false`. Na TV ao vivo o flag é verificado — se TTS não falar, checar se está habilitado no admin
+- Impressão térmica: `ticket_print_jobs` armazena bytes ESC/POS em base64 (`print_data_b64`); status `pending` → print agent busca e imprime → `printed` ou `failed`

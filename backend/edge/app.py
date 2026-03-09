@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import os
@@ -21,7 +22,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from PIL import Image
 
 from .auth import create_access_token, decode_access_token, hash_password, require_role, verify_password
-from .thermal_print import print_ticket
+from .thermal_print import build_ticket_escpos, print_ticket
 
 load_dotenv()
 
@@ -2356,6 +2357,210 @@ def set_tenant_tv_settings(payload_in: Dict[str, Any], authorization: Optional[s
     return {"ok": True}
 
 
+@app.get("/tenant/printer-settings")
+def get_tenant_printer_settings(authorization: Optional[str] = Header(default=None)):
+    payload = require_jwt(authorization)
+    require_role(payload, {"admin"})
+    tenant_cpf_cnpj = tenant_from_jwt(payload)
+    with db_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            "SELECT printer_enabled, printer_ip, printer_port, print_agent_token FROM tenants WHERE cpf_cnpj = %s",
+            (tenant_cpf_cnpj,),
+        )
+        row = cur.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Tenant not found")
+    return {
+        "printer_enabled": bool(row.get("printer_enabled", 0)),
+        "printer_ip": row.get("printer_ip") or "",
+        "printer_port": int(row.get("printer_port") or 9100),
+        "print_agent_token": row.get("print_agent_token") or "",
+    }
+
+
+@app.post("/tenant/printer-settings")
+def set_tenant_printer_settings(payload_in: Dict[str, Any], authorization: Optional[str] = Header(default=None)):
+    payload = require_jwt(authorization)
+    require_role(payload, {"admin"})
+    tenant_cpf_cnpj = tenant_from_jwt(payload)
+    printer_enabled = bool(payload_in.get("printer_enabled", False))
+    printer_ip = (payload_in.get("printer_ip") or "").strip()
+    printer_port = int(payload_in.get("printer_port") or 9100)
+    if printer_port < 1 or printer_port > 65535:
+        raise HTTPException(status_code=400, detail="printer_port must be 1-65535")
+    with db_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE tenants SET printer_enabled = %s, printer_ip = %s, printer_port = %s WHERE cpf_cnpj = %s",
+            (1 if printer_enabled else 0, printer_ip or None, printer_port, tenant_cpf_cnpj),
+        )
+    return {"ok": True}
+
+
+@app.post("/tenant/printer-settings/rotate-token")
+def rotate_print_agent_token(authorization: Optional[str] = Header(default=None)):
+    """Gera um novo token para o print agent (invalida o anterior)."""
+    payload = require_jwt(authorization)
+    require_role(payload, {"admin"})
+    tenant_cpf_cnpj = tenant_from_jwt(payload)
+    new_token = str(uuid.uuid4())
+    with db_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE tenants SET print_agent_token = %s WHERE cpf_cnpj = %s",
+            (new_token, tenant_cpf_cnpj),
+        )
+    return {"ok": True, "print_agent_token": new_token}
+
+
+@app.post("/tenant/printer-settings/test-print")
+def test_print(authorization: Optional[str] = Header(default=None)):
+    """Enfileira um job de teste de impressão. O print agent imprimirá na próxima poll."""
+    payload = require_jwt(authorization)
+    require_role(payload, {"admin"})
+    tenant_cpf_cnpj = tenant_from_jwt(payload)
+
+    with db_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            "SELECT nome_fantasia, nome_razao_social, printer_enabled, printer_ip, printer_port FROM tenants WHERE cpf_cnpj = %s",
+            (tenant_cpf_cnpj,),
+        )
+        row = cur.fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    if not row.get("printer_enabled"):
+        raise HTTPException(status_code=400, detail="Impressão não está habilitada para este tenant")
+    if not (row.get("printer_ip") or "").strip():
+        raise HTTPException(status_code=400, detail="IP da impressora não configurado")
+
+    tenant_name = (row.get("nome_fantasia") or row.get("nome_razao_social") or "").strip() or None
+    now = utc_now()
+    from datetime import timedelta
+    BRT = timezone(timedelta(hours=-3))
+    issued_str = now.astimezone(BRT).strftime("%d/%m/%Y %H:%M:%S")
+
+    escpos_bytes = build_ticket_escpos(
+        ticket_code="TESTE",
+        service_name="Teste de Impressao",
+        priority="Normal",
+        issued_at_str=issued_str,
+        tenant_name=tenant_name,
+    )
+    print_data_b64 = base64.b64encode(escpos_bytes).decode("ascii")
+
+    # Usamos um ticket_id e service_id fictícios pois é só um teste
+    fake_id = str(uuid.uuid4())
+    job_id  = str(uuid.uuid4())
+
+    # Busca qualquer service_id válido do tenant para satisfazer a FK
+    with db_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            "SELECT id FROM services WHERE tenant_cpf_cnpj = %s AND active = 1 LIMIT 1",
+            (tenant_cpf_cnpj,),
+        )
+        svc = cur.fetchone()
+        if not svc:
+            raise HTTPException(status_code=400, detail="Nenhum serviço ativo para usar no job de teste")
+        service_id = svc["id"]
+
+        # Insere um ticket temporário para satisfazer a FK de ticket_print_jobs
+        cur2 = conn.cursor()
+        cur2.execute(
+            """INSERT INTO tickets (id, tenant_cpf_cnpj, service_id, service_name, ticket_code, priority, status, issued_at)
+               VALUES (%s, %s, %s, 'Teste de Impressao', 'TESTE', 'normal', 'waiting', NOW(6))""",
+            (fake_id, tenant_cpf_cnpj, service_id),
+        )
+        cur2.execute(
+            """INSERT INTO ticket_print_jobs
+                 (id, tenant_cpf_cnpj, ticket_id, ticket_code, service_id, service_name, priority,
+                  counter_id, print_text, output_mode, status, print_data_b64)
+               VALUES (%s, %s, %s, 'TESTE', %s, 'Teste de Impressao', 'normal',
+                       NULL, 'TESTE DE IMPRESSAO', 'both', 'pending', %s)""",
+            (job_id, tenant_cpf_cnpj, fake_id, service_id, print_data_b64),
+        )
+
+    return {"ok": True, "print_job_id": job_id, "message": "Job de teste enfileirado. O print agent imprimirá em instantes."}
+
+
+# ---------------------------------------------------------------------------
+# Print Agent endpoints (autenticados via print_agent_token do tenant)
+# ---------------------------------------------------------------------------
+
+def _require_print_agent_auth(authorization: Optional[str]) -> str:
+    """Valida Bearer token do print agent. Retorna tenant_cpf_cnpj."""
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Authorization required")
+    token = authorization.split(" ", 1)[1].strip()
+    with db_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            "SELECT cpf_cnpj FROM tenants WHERE print_agent_token = %s LIMIT 1",
+            (token,),
+        )
+        row = cur.fetchone()
+    if not row:
+        raise HTTPException(status_code=403, detail="Invalid print agent token")
+    return row["cpf_cnpj"]
+
+
+@app.get("/print-agent/jobs")
+def print_agent_list_jobs(authorization: Optional[str] = Header(default=None)):
+    """Retorna jobs de impressão pendentes para o tenant. Autenticado via print_agent_token."""
+    tenant_cpf_cnpj = _require_print_agent_auth(authorization)
+    with db_conn() as conn:
+        cur = conn.cursor(dictionary=True)
+        cur.execute(
+            """SELECT j.id, j.ticket_code, j.service_name, j.priority, j.created_at,
+                      j.print_data_b64,
+                      t.printer_ip, t.printer_port
+               FROM ticket_print_jobs j
+               JOIN tenants t ON t.cpf_cnpj = j.tenant_cpf_cnpj
+               WHERE j.tenant_cpf_cnpj = %s AND j.status = 'pending'
+               ORDER BY j.created_at ASC
+               LIMIT 20""",
+            (tenant_cpf_cnpj,),
+        )
+        rows = cur.fetchall()
+    jobs = []
+    for r in rows:
+        jobs.append({
+            "id": r["id"],
+            "ticket_code": r["ticket_code"],
+            "service_name": r["service_name"],
+            "priority": r["priority"],
+            "created_at": r["created_at"].isoformat() if hasattr(r["created_at"], "isoformat") else str(r["created_at"]),
+            "print_data_b64": r.get("print_data_b64") or "",
+            "printer_ip": r.get("printer_ip") or "",
+            "printer_port": int(r.get("printer_port") or 9100),
+        })
+    return {"jobs": jobs}
+
+
+@app.post("/print-agent/jobs/{job_id}/ack")
+def print_agent_ack_job(job_id: str, payload_in: Dict[str, Any], authorization: Optional[str] = Header(default=None)):
+    """Confirma resultado de impressão (printed ou failed)."""
+    tenant_cpf_cnpj = _require_print_agent_auth(authorization)
+    status = (payload_in.get("status") or "printed").strip()
+    if status not in ("printed", "failed"):
+        raise HTTPException(status_code=400, detail="status must be 'printed' or 'failed'")
+    error_msg = (payload_in.get("error") or "")[:255] or None
+    with db_conn() as conn:
+        cur = conn.cursor()
+        cur.execute(
+            """UPDATE ticket_print_jobs
+               SET status = %s, printed_at = NOW(6), error_msg = %s
+               WHERE id = %s AND tenant_cpf_cnpj = %s""",
+            (status, error_msg, job_id, tenant_cpf_cnpj),
+        )
+        if cur.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Job not found")
+    return {"ok": True}
+
+
 @app.post("/tenant/reset-history")
 def tenant_reset_history(authorization: Optional[str] = Header(default=None)):
     """Limpa todo o histórico de senhas/chamadas do tenant (tickets e calls). Apenas admin."""
@@ -2698,43 +2903,56 @@ def totem_emit(payload_in: Dict[str, Any]):
         pass  # usa logo_path
     else:
         logo_path = None
-    ticket_print_data = {**out, "tenant_name": tenant_name, "logo_path": logo_path}
-
-    # Impressão térmica (ESC/POS): envia para /dev/usb/lp1 se PRINTER_ENABLED não for 0
-    printed = False
-    if os.environ.get("PRINTER_ENABLED", "1") != "0":
-        printed = print_ticket(
-            ticket_print_data,
-            base_url=os.environ.get("TOTEM_BASE_URL"),
-            device=os.environ.get("PRINTER_DEVICE") or "/dev/usb/lp1",
-        )
-
-    # Minimal print text (raw). Later we will add DB audit + server file write.
-    print_text = (
-        "CHAMADOR - TOTEM\\n"
-        f"TENANT: {tenant_cpf_cnpj}\\n"
-        "------------------------------\\n"
-        f"SENHA: {out['ticket_code']}\\n"
-        f"SERVIÇO: {out['service_name']}\\n"
-        f"PRIORIDADE: {out['priority']}\\n"
-        f"EMITIDO EM: {utc_now().strftime('%d/%m/%Y %H:%M:%S')}\\n"
-        "------------------------------\\n"
-        "Aguarde ser chamado no painel.\\n"
-    )
-
-    # Save to server (.run/prints) + audit in DB (ticket_print_jobs)
-    saved_path = None
+    # Buscar configuração de impressora do tenant
+    printer_enabled = False
     try:
-        base_dir = os.getcwd()
-        prints_dir = os.path.join(base_dir, ".run", "prints")
-        os.makedirs(prints_dir, exist_ok=True)
-        safe_code = (out.get("ticket_code") or "ticket").replace("/", "-")
-        fname = f"{safe_code}_{int(time.time())}.txt"
-        saved_path = os.path.join(prints_dir, fname)
-        with open(saved_path, "w", encoding="utf-8") as f:
-            f.write(print_text)
+        with db_conn() as conn:
+            cur = conn.cursor(dictionary=True)
+            cur.execute("SELECT printer_enabled FROM tenants WHERE cpf_cnpj = %s LIMIT 1", (tenant_cpf_cnpj,))
+            row = cur.fetchone()
+            if row:
+                printer_enabled = bool(row.get("printer_enabled", 0))
     except Exception:
-        saved_path = None
+        pass
+
+    # Gera bytes ESC/POS e codifica em base64 para o print agent
+    print_data_b64 = None
+    if printer_enabled:
+        try:
+            from datetime import timedelta
+            issued = out.get("issued_at")
+            if isinstance(issued, datetime):
+                BRT = timezone(timedelta(hours=-3))
+                if issued.tzinfo is not None:
+                    issued = issued.astimezone(BRT)
+                issued_str = issued.strftime("%d/%m/%Y %H:%M:%S")
+            else:
+                issued_str = str(issued or utc_now().strftime("%d/%m/%Y %H:%M:%S"))
+            logo_path = os.environ.get("TICKET_LOGO_PATH", "").strip()
+            logo_path = logo_path if logo_path and os.path.isfile(logo_path) else None
+            escpos_bytes = build_ticket_escpos(
+                ticket_code=out["ticket_code"],
+                service_name=out["service_name"],
+                priority="Preferencial" if out.get("priority") == "preferential" else "Normal",
+                issued_at_str=issued_str,
+                tenant_name=tenant_name,
+                logo_path=logo_path,
+            )
+            print_data_b64 = base64.b64encode(escpos_bytes).decode("ascii")
+        except Exception:
+            print_data_b64 = None
+
+    print_text = (
+        "CHAMA JA - TOTEM\n"
+        f"TENANT: {tenant_cpf_cnpj}\n"
+        "------------------------------\n"
+        f"SENHA: {out['ticket_code']}\n"
+        f"SERVICO: {out['service_name']}\n"
+        f"PRIORIDADE: {out['priority']}\n"
+        f"EMITIDO EM: {utc_now().strftime('%d/%m/%Y %H:%M:%S')}\n"
+        "------------------------------\n"
+        "Aguarde ser chamado no painel.\n"
+    )
 
     print_job_id = str(uuid.uuid4())
     try:
@@ -2743,9 +2961,10 @@ def totem_emit(payload_in: Dict[str, Any]):
             cur.execute(
                 """
                 INSERT INTO ticket_print_jobs
-                  (id, tenant_cpf_cnpj, ticket_id, ticket_code, service_id, service_name, priority, counter_id, print_text, output_mode)
+                  (id, tenant_cpf_cnpj, ticket_id, ticket_code, service_id, service_name, priority,
+                   counter_id, print_text, output_mode, status, print_data_b64)
                 VALUES
-                  (%s, %s, %s, %s, %s, %s, %s, NULL, %s, 'both')
+                  (%s, %s, %s, %s, %s, %s, %s, NULL, %s, 'both', %s, %s)
                 """,
                 (
                     print_job_id,
@@ -2756,13 +2975,15 @@ def totem_emit(payload_in: Dict[str, Any]):
                     out["service_name"],
                     out["priority"],
                     print_text,
+                    "pending" if printer_enabled and print_data_b64 else "printed",
+                    print_data_b64,
                 ),
             )
     except Exception:
         # keep emitting working even if audit fails
         pass
 
-    return {"ok": True, **out, "print_text": print_text, "print_job_id": print_job_id, "saved_path": saved_path, "printed": printed}
+    return {"ok": True, **out, "print_job_id": print_job_id, "queued_for_print": bool(printer_enabled and print_data_b64)}
 
 
 @app.get("/tickets/queue")

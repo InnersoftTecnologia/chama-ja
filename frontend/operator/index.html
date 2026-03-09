@@ -82,9 +82,61 @@
         min-height: 260px;
       }
       .queue-scroll {
-        max-height: 520px;
-        overflow: auto;
+        max-height: calc(100vh - 340px);
+        min-height: 120px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
       }
+      /* Linha compacta da fila */
+      .ticket-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-left: 4px solid rgba(255, 255, 255, 0.15);
+        background: rgba(255, 255, 255, 0.04);
+      }
+      .ticket-row.is-pref {
+        border-left-color: #f59e0b;
+        background: rgba(245, 158, 11, 0.07);
+      }
+      .ticket-code {
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        font-size: 1rem;
+        min-width: 62px;
+      }
+      .ticket-meta {
+        color: rgba(255, 255, 255, 0.65);
+        font-size: 0.82rem;
+      }
+      /* Badges de prioridade */
+      .badge-pref {
+        font-size: 0.78rem;
+        font-weight: 700;
+        color: #fbbf24;
+        border: 1px solid rgba(245, 158, 11, 0.55);
+        background: rgba(245, 158, 11, 0.15);
+        padding: 3px 10px;
+        border-radius: 999px;
+        white-space: nowrap;
+        letter-spacing: 0.3px;
+      }
+      .badge-norm {
+        font-size: 0.78rem;
+        color: rgba(255, 255, 255, 0.60);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.05);
+        padding: 3px 10px;
+        border-radius: 999px;
+        white-space: nowrap;
+      }
+      /* Ticket card principal (senha em atendimento) — mantém estilo maior */
       .ticket-card {
         display: flex;
         align-items: center;
@@ -94,15 +146,6 @@
         border-radius: 14px;
         border: 1px solid rgba(255, 255, 255, 0.10);
         background: rgba(255, 255, 255, 0.05);
-      }
-      .ticket-code {
-        font-weight: 800;
-        letter-spacing: 0.5px;
-        font-size: 1.05rem;
-      }
-      .ticket-meta {
-        color: rgba(255, 255, 255, 0.72);
-        font-size: 0.85rem;
       }
 
       /* Light mode */
@@ -119,7 +162,10 @@
       body.theme-light .btn-soft { border: 1px solid rgba(10, 20, 40, 0.14); background: rgba(10, 20, 40, 0.04); color: #0b1320; }
       body.theme-light .btn-soft:hover { background: rgba(10, 20, 40, 0.06); color: #0b1320; }
       body.theme-light .ticket-card { background: rgba(10, 20, 40, 0.03); border: 1px solid rgba(10, 20, 40, 0.10); }
+      body.theme-light .ticket-row { background: rgba(10, 20, 40, 0.03); border-color: rgba(10, 20, 40, 0.10); border-left-color: rgba(10, 20, 40, 0.18); }
+      body.theme-light .ticket-row.is-pref { background: rgba(245, 158, 11, 0.08); border-left-color: #d97706; }
       body.theme-light .ticket-meta { color: rgba(10, 20, 40, 0.70); }
+      body.theme-light .badge-norm { color: rgba(10, 20, 40, 0.55); border-color: rgba(10, 20, 40, 0.14); background: rgba(10, 20, 40, 0.04); }
       body.theme-light .text-white { color: #0b1320 !important; }
       body.theme-light .text-white-50 { color: rgba(10, 20, 40, 0.62) !important; }
       body.theme-light .text-white-75 { color: rgba(10, 20, 40, 0.78) !important; }
@@ -256,7 +302,7 @@
                 </div>
                 <button id="btnCallNextPref" class="btn btn-scart-primary btn-sm">Chamar próxima</button>
               </div>
-              <div class="queue-scroll mt-3 d-grid gap-2" id="listPref"></div>
+              <div class="queue-scroll mt-3" id="listPref"></div>
             </div>
           </div>
         </div>
@@ -273,7 +319,7 @@
                 </div>
                 <button id="btnCallNextNorm" class="btn btn-scart-primary btn-sm">Chamar próxima</button>
               </div>
-              <div class="queue-scroll mt-3 d-grid gap-2" id="listNorm"></div>
+              <div class="queue-scroll mt-3" id="listNorm"></div>
             </div>
           </div>
         </div>
@@ -442,15 +488,15 @@
         }
 
         tickets.forEach((t) => {
+          const isPref = t.priority === "preferential";
+          const waitMin = Math.floor((t.wait_seconds || 0) / 60);
           const div = document.createElement("div");
-          div.className = "ticket-card text-start";
+          div.className = "ticket-row" + (isPref ? " is-pref" : "");
           div.innerHTML = `
-            <div>
-              <div class="ticket-code text-white">${t.ticket_code}</div>
-              <div class="ticket-meta">${t.service_name}</div>
-              <div class="ticket-meta mt-1"><span class="text-white-50">Aguardando:</span> ${Math.floor((t.wait_seconds || 0) / 60)}m</div>
-            </div>
-            <div class="op-pill">${priorityLabel(t.priority)}</div>
+            <div class="ticket-code text-white">${t.ticket_code}</div>
+            <div class="flex-grow-1 ticket-meta" style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.service_name}</div>
+            <div class="ticket-meta" style="white-space:nowrap;">${waitMin}m</div>
+            <div class="${isPref ? "badge-pref" : "badge-norm"}">${isPref ? "Preferencial" : "Normal"}</div>
           `;
           root.appendChild(div);
         });

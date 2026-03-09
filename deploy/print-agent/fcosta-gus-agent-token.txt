@@ -1,0 +1,6 @@
+Tenant: fcosta-gus (Ferreira Costa)
+Print Agent Token: 6c79f979-1bad-11f1-aa97-fa27c9035795
+Printer IP: 192.168.1.100
+Printer Port: 9100
+
+-- Cole o token na variável TOKEN dos scripts print-agent.ps1 / print-agent.py

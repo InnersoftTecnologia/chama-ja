@@ -1233,6 +1233,71 @@
             </div>
           </div>
 
+          <!-- Seção: Impressora Térmica -->
+          <div class="card scart-card mb-4">
+            <div class="card-header-gradient">
+              <div class="d-flex align-items-center justify-content-between gap-3 flex-wrap">
+                <div>
+                  <div class="scart-section-title text-white">Impressora Térmica</div>
+                  <div class="small opacity-75 mt-1">Impressão automática de senhas via print agent local.</div>
+                </div>
+                <div class="d-flex gap-2">
+                  <button id="btnRefreshPrinterSettings" class="btn-action btn-refresh">Atualizar</button>
+                  <button id="btnTestPrint" class="btn-action btn-toggle-on">Testar Impressão</button>
+                  <button id="btnSavePrinterSettings" class="btn-action btn-save">Salvar</button>
+                </div>
+              </div>
+            </div>
+            <div class="card-body p-4">
+              <div class="row g-4">
+
+                <!-- Habilitar impressão -->
+                <div class="col-12 col-lg-6">
+                  <div class="border rounded-4 p-3 bg-body-tertiary">
+                    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                      <div>
+                        <div class="fw-bold">Impressão habilitada</div>
+                        <div class="text-body-secondary small">Ativa o envio de jobs para o print agent.</div>
+                      </div>
+                      <button type="button" id="btnPrinterEnabledToggle" class="btn-action btn-toggle-off" style="min-width: 100px;">Desativado</button>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- IP e Porta -->
+                <div class="col-12 col-lg-6">
+                  <div class="border rounded-4 p-3 bg-body-tertiary">
+                    <div class="fw-bold mb-2">Endereço da Impressora (TCP)</div>
+                    <div class="row g-2">
+                      <div class="col-8">
+                        <label class="form-label small text-body-secondary mb-1">IP</label>
+                        <input type="text" id="inputPrinterIp" class="form-control form-control-sm" placeholder="192.168.1.100" maxlength="64" />
+                      </div>
+                      <div class="col-4">
+                        <label class="form-label small text-body-secondary mb-1">Porta</label>
+                        <input type="number" id="inputPrinterPort" class="form-control form-control-sm" value="9100" min="1" max="65535" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Token do agente -->
+                <div class="col-12">
+                  <div class="border rounded-4 p-3 bg-body-tertiary">
+                    <div class="fw-bold mb-1">Token do Print Agent</div>
+                    <div class="text-body-secondary small mb-2">Cole este token no script <code>print-agent.ps1</code> ou <code>print-agent.sh</code>.</div>
+                    <div class="d-flex gap-2 align-items-center flex-wrap">
+                      <input type="text" id="inputPrintAgentToken" class="form-control form-control-sm font-monospace" readonly style="max-width: 360px;" />
+                      <button type="button" id="btnCopyAgentToken" class="btn-action btn-save" title="Copiar token">Copiar</button>
+                      <button type="button" id="btnRotateAgentToken" class="btn-action btn-delete" title="Gerar novo token (invalida o anterior)">Gerar novo token</button>
+                    </div>
+                  </div>
+                </div>
+
+              </div><!-- /.row -->
+            </div>
+          </div>
+
           <!-- Seção: Avisos do Rodapé -->
           <div class="card scart-card">
             <div class="card-header-gradient">
@@ -2381,7 +2446,7 @@
 
         setStatus("Autenticado.");
         await refreshTenant();
-        await Promise.all([refreshDashboard(), refreshUsers(), refreshCounters(), refreshServices(), refreshBrandingPreview(), refreshAnnouncements(), refreshTVSettings(), refreshYouTube()]);
+        await Promise.all([refreshDashboard(), refreshUsers(), refreshCounters(), refreshServices(), refreshBrandingPreview(), refreshAnnouncements(), refreshTVSettings(), refreshYouTube(), refreshPrinterSettings()]);
       }
 
       document.getElementById("btnLogin").addEventListener("click", async () => {
@@ -2906,6 +2971,103 @@
         annModal.hide();
         await refreshAnnouncements();
         swalOk("Aviso salvo", "Vai aparecer na TV em sequência.");
+      });
+
+      // ---------------------------------------------------------------------------
+      // Printer Settings
+      // ---------------------------------------------------------------------------
+      let currentPrinterSettings = { printer_enabled: false, printer_ip: "", printer_port: 9100, print_agent_token: "" };
+
+      async function refreshPrinterSettings() {
+        try {
+          const data = await api("/tenant/printer-settings", { headers: authHeaders() });
+          currentPrinterSettings = data;
+          updatePrinterSettingsUI();
+        } catch (e) {
+          swalErr("Erro", "Não foi possível carregar configurações de impressora: " + String(e));
+        }
+      }
+
+      function updatePrinterSettingsUI() {
+        setSingleToggle(
+          document.getElementById("btnPrinterEnabledToggle"),
+          currentPrinterSettings.printer_enabled,
+          "Ativado", "Desativado"
+        );
+        const ipInput = document.getElementById("inputPrinterIp");
+        if (ipInput) ipInput.value = currentPrinterSettings.printer_ip || "";
+        const portInput = document.getElementById("inputPrinterPort");
+        if (portInput) portInput.value = currentPrinterSettings.printer_port || 9100;
+        const tokenInput = document.getElementById("inputPrintAgentToken");
+        if (tokenInput) tokenInput.value = currentPrinterSettings.print_agent_token || "";
+      }
+
+      async function savePrinterSettings() {
+        try {
+          const ip = (document.getElementById("inputPrinterIp").value || "").trim();
+          const port = parseInt(document.getElementById("inputPrinterPort").value, 10) || 9100;
+          await api("/tenant/printer-settings", {
+            method: "POST",
+            headers: authHeaders(),
+            body: JSON.stringify({
+              printer_enabled: currentPrinterSettings.printer_enabled,
+              printer_ip: ip,
+              printer_port: port,
+            }),
+          });
+          currentPrinterSettings.printer_ip = ip;
+          currentPrinterSettings.printer_port = port;
+          swalOk("Salvo", "Configurações de impressora atualizadas.");
+        } catch (e) {
+          swalErr("Erro", String(e));
+        }
+      }
+
+      document.getElementById("btnRefreshPrinterSettings").addEventListener("click", refreshPrinterSettings);
+      document.getElementById("btnSavePrinterSettings").addEventListener("click", savePrinterSettings);
+      document.getElementById("btnTestPrint").addEventListener("click", async () => {
+        const btn = document.getElementById("btnTestPrint");
+        btn.disabled = true;
+        btn.textContent = "Enviando...";
+        try {
+          const r = await api("/tenant/printer-settings/test-print", { method: "POST", headers: authHeaders() });
+          swalOk("Job enviado", "O print agent imprimirá o ticket de teste em instantes.");
+        } catch (e) {
+          swalErr("Erro", String(e));
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "Testar Impressão";
+        }
+      });
+      document.getElementById("btnPrinterEnabledToggle").addEventListener("click", async () => {
+        currentPrinterSettings.printer_enabled = !currentPrinterSettings.printer_enabled;
+        updatePrinterSettingsUI();
+        await savePrinterSettings();
+      });
+      document.getElementById("btnCopyAgentToken").addEventListener("click", () => {
+        const val = document.getElementById("inputPrintAgentToken").value;
+        if (!val) return;
+        navigator.clipboard.writeText(val).then(() => swalOk("Copiado", "Token copiado para a área de transferência."));
+      });
+      document.getElementById("btnRotateAgentToken").addEventListener("click", async () => {
+        const ok = await Swal.fire({
+          title: "Gerar novo token?",
+          text: "O token atual será invalidado. O script do print agent precisará ser atualizado.",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonColor: "#e53e3e",
+          cancelButtonText: "Cancelar",
+          confirmButtonText: "Sim, gerar",
+        });
+        if (!ok.isConfirmed) return;
+        try {
+          const r = await api("/tenant/printer-settings/rotate-token", { method: "POST", headers: authHeaders() });
+          currentPrinterSettings.print_agent_token = r.print_agent_token;
+          updatePrinterSettingsUI();
+          swalOk("Novo token gerado", "Atualize o script print-agent com o novo token.");
+        } catch (e) {
+          swalErr("Erro", String(e));
+        }
       });
 
       // TV Settings buttons
